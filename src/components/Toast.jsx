@@ -45,15 +45,19 @@ function Toast({ toast, onRemove }) {
   }, [toast.duration]);
 
   const icons = {
-    success: '✓',
-    error: '✗',
-    info: 'ℹ',
-    warning: '⚠',
+    success: 'check',
+    error: 'close',
+    info: 'info',
+    warning: 'warning',
   };
 
   return (
     <div className={`toast toast-${toast.type} ${exiting ? 'toast-exit' : 'toast-enter'}`}>
-      <span className="toast-icon">{icons[toast.type] || icons.info}</span>
+      <span className="toast-icon">
+        <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
+          {icons[toast.type] || icons.info}
+        </span>
+      </span>
       <span className="toast-message">{toast.message}</span>
       <button className="toast-close" onClick={() => onRemove(toast.id)}>✕</button>
     </div>

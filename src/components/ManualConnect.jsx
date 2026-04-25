@@ -19,30 +19,32 @@ export default function ManualConnect({ onConnect }) {
   };
 
   return (
-    <div className="manual-connect" id="manual-connect">
-      <div className="manual-connect-header">
-        <span className="manual-icon">🔗</span>
-        <h3>Manual Connect</h3>
+    <section className="manual-connect-section">
+      <div className="section-header">
+        <h2 className="section-title">
+          <span className="material-symbols-outlined">hub</span>
+          Manual Connect
+        </h2>
       </div>
-      <p className="manual-desc">
-        Can&apos;t see the other device? Enter their Peer ID to connect directly.
-      </p>
-      <form className="manual-form" onSubmit={handleSubmit}>
-        <div className="input-group">
-          <input
-            type="text"
-            className="manual-input"
-            placeholder="Enter Peer ID..."
-            value={ip}
-            onChange={(e) => setIp(e.target.value)}
-            id="manual-connect-input"
-          />
-          <button type="submit" className="btn btn-connect" id="manual-connect-btn">
-            Connect
-          </button>
-        </div>
-        {error && <span className="manual-error">{error}</span>}
-      </form>
-    </div>
+      <div className="manual-connect" id="manual-connect">
+        <form className="manual-form" onSubmit={handleSubmit}>
+          <label className="manual-label">Enter Peer ID</label>
+          <div className="input-group">
+            <input
+              type="text"
+              className="manual-input"
+              placeholder="e.g. AB-123C"
+              value={ip}
+              onChange={(e) => setIp(e.target.value)}
+              id="manual-connect-input"
+            />
+            <button type="submit" className="btn btn-connect" id="manual-connect-btn">
+              Connect
+            </button>
+          </div>
+          {error && <span className="manual-error">{error}</span>}
+        </form>
+      </div>
+    </section>
   );
 }

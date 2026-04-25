@@ -1,5 +1,18 @@
 import { formatFileSize, formatSpeed, formatETA, getFileCategory, getFileIcon } from '../utils/fileUtils';
 
+// Maps file category to Material Symbols icon name
+const categoryIcons = {
+  document: 'description',
+  spreadsheet: 'table_chart',
+  presentation: 'slideshow',
+  image: 'image',
+  video: 'movie',
+  audio: 'music_note',
+  archive: 'folder_zip',
+  code: 'code',
+  file: 'draft',
+};
+
 export default function TransferList({ transfers, onRemove, onClearCompleted }) {
   if (transfers.length === 0) return null;
 
@@ -9,8 +22,8 @@ export default function TransferList({ transfers, onRemove, onClearCompleted }) 
     <div className="transfer-list" id="transfer-list">
       <div className="transfer-list-header">
         <h2 className="transfer-list-title">
-          <span className="transfer-icon">📡</span>
-          Transfers
+          <span className="material-symbols-outlined">sync</span>
+          Active Transfers
         </h2>
         {hasCompleted && (
           <button className="clear-btn" onClick={onClearCompleted} id="clear-completed-btn">
@@ -30,19 +43,19 @@ export default function TransferList({ transfers, onRemove, onClearCompleted }) 
 
 function TransferItem({ transfer, onRemove }) {
   const category = getFileCategory(transfer.fileType, transfer.fileName);
-  const icon = getFileIcon(category);
+  const iconName = categoryIcons[category] || 'draft';
   const progress = Math.round(transfer.progress);
   const isComplete = transfer.status === 'completed';
   const isError = transfer.status === 'error';
 
-  const elapsed = (Date.now() - transfer.startTime) / 1000;
-  const bytesTransferred = (transfer.progress / 100) * transfer.fileSize;
-  const remainingBytes = transfer.fileSize - bytesTransferred;
+  const remainingBytes = transfer.fileSize - ((transfer.progress / 100) * transfer.fileSize);
   const eta = transfer.speed > 0 ? remainingBytes / transfer.speed : 0;
 
   return (
     <div className={`transfer-item ${transfer.status}`} id={`transfer-${transfer.id}`}>
-      <div className="transfer-item-icon">{icon}</div>
+      <div className="transfer-item-icon">
+        <span className="material-symbols-outlined">{iconName}</span>
+      </div>
 
       <div className="transfer-item-details">
         <div className="transfer-item-name">
@@ -73,6 +86,8 @@ function TransferItem({ transfer, onRemove }) {
           ></div>
         </div>
       </div>
+
+      <div className="transfer-percentage">{progress}%</div>
 
       {(isComplete || isError) && (
         <button

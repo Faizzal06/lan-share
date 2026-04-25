@@ -1,18 +1,17 @@
-import { getOsIcon } from '../utils/deviceInfo';
+export default function Header({ connected, peerId, peerStatus, deviceName }) {
+  const shortId = peerId ? peerId.slice(0, 7).toUpperCase() : '---';
 
-export default function Header({ connected, peerId, peerStatus }) {
   return (
-    <header className="app-header" id="app-header">
-      <div className="header-left">
-        <div className="logo">
-          <span className="logo-icon">⚡</span>
-          <h1 className="logo-text">LANShare</h1>
-        </div>
-        <span className="header-tagline">Peer-to-Peer File Sharing</span>
+    <header className="desktop-status-bar" id="app-header">
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <h2 className="status-bar-title">Dashboard</h2>
+        <span style={{ fontSize: '14px', fontWeight: '700', padding: '4px 8px', background: 'var(--primary-container)', border: '2px solid var(--border)', boxShadow: '2px 2px 0px 0px #1b1b1b' }}>
+          {deviceName}
+        </span>
       </div>
 
-      <div className="header-right">
-        <div className="network-status" id="network-status">
+      <div className="status-bar-right">
+        <div className="status-badge" id="network-status">
           <span className={`status-dot ${connected ? 'online' : 'offline'}`}></span>
           <span className="status-label">
             {connected ? 'LAN Connected' : 'Connecting...'}
@@ -20,11 +19,9 @@ export default function Header({ connected, peerId, peerStatus }) {
         </div>
 
         {peerId && (
-          <div className="device-badge" id="device-badge">
-            <span className="device-icon">{getOsIcon(navigator.userAgent.includes('Windows') ? 'Windows' : 'Unknown')}</span>
-            <span className="device-id" title={peerId}>
-              {peerId.slice(0, 8)}...
-            </span>
+          <div className="peer-id-badge" id="device-badge">
+            <span className="peer-id-label">PEER ID:</span>
+            <span className="peer-id-value">{shortId}</span>
           </div>
         )}
       </div>

@@ -18,15 +18,15 @@ export default function PeerGrid({ peers, onSendFile, activePeerId }) {
         </p>
         <div className="empty-tips">
           <div className="tip">
-            <span className="tip-icon">📶</span>
+            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>wifi</span>
             <span>Check that WiFi is connected</span>
           </div>
           <div className="tip">
-            <span className="tip-icon">🔗</span>
+            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>link</span>
             <span>Open the same URL on other devices</span>
           </div>
           <div className="tip">
-            <span className="tip-icon">🛡️</span>
+            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>shield</span>
             <span>Disable AP Isolation on your router if needed</span>
           </div>
         </div>

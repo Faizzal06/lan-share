@@ -35,37 +35,44 @@ export function getDeviceInfo() {
     os = 'ChromeOS';
   }
 
-  // Generate a human-friendly device name
-  const deviceName = `${os} · ${browser}`;
+  // Generate a human-friendly device name, storing it in localStorage to persist it
+  let deviceName = localStorage.getItem('lanshare_device_name');
+  if (!deviceName) {
+    const isDesktop = os === 'Windows' || os === 'macOS' || os === 'Linux' || os === 'ChromeOS';
+    const prefix = isDesktop ? 'DESKTOP' : 'PHONE';
+    const suffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+    deviceName = `${prefix}-${suffix}`;
+    localStorage.setItem('lanshare_device_name', deviceName);
+  }
 
   return { browser, os, deviceName };
 }
 
 /**
- * Returns an icon/emoji for the detected OS
+ * Returns a Material Symbols icon name for the detected OS
  */
 export function getOsIcon(os) {
   const icons = {
-    'Windows': '💻',
-    'macOS': '🍎',
-    'Linux': '🐧',
-    'Android': '📱',
-    'iOS': '📱',
-    'ChromeOS': '💻',
+    'Windows': 'laptop_windows',
+    'macOS': 'laptop_mac',
+    'Linux': 'computer',
+    'Android': 'smartphone',
+    'iOS': 'smartphone',
+    'ChromeOS': 'laptop_chromebook',
   };
-  return icons[os] || '🖥️';
+  return icons[os] || 'devices';
 }
 
 /**
- * Returns an icon/emoji for the detected browser
+ * Returns a Material Symbols icon name for the detected browser
  */
 export function getBrowserIcon(browser) {
   const icons = {
-    'Chrome': '🌐',
-    'Firefox': '🦊',
-    'Safari': '🧭',
-    'Edge': '🔷',
-    'Opera': '⭕',
+    'Chrome': 'language',
+    'Firefox': 'language',
+    'Safari': 'language',
+    'Edge': 'language',
+    'Opera': 'language',
   };
-  return icons[browser] || '🌐';
+  return icons[browser] || 'language';
 }

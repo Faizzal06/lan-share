@@ -6,10 +6,8 @@ export default function IncomingFileDialog({ request, onAccept, onReject }) {
   return (
     <div className="modal-overlay" id="incoming-file-overlay">
       <div className="modal incoming-file-modal" id="incoming-file-modal">
-        <div className="modal-glow"></div>
-
         <div className="modal-header">
-          <span className="modal-icon">📨</span>
+          <span className="material-symbols-outlined modal-icon">mail</span>
           <h2>Incoming File</h2>
         </div>
 
@@ -19,7 +17,9 @@ export default function IncomingFileDialog({ request, onAccept, onReject }) {
           </p>
 
           <div className="file-preview">
-            <div className="file-preview-icon">📄</div>
+            <div className="file-preview-icon">
+              <span className="material-symbols-outlined">description</span>
+            </div>
             <div className="file-preview-info">
               <span className="file-preview-name">{request.fileName}</span>
               <span className="file-preview-size">{formatFileSize(request.fileSize)}</span>
@@ -36,14 +36,16 @@ export default function IncomingFileDialog({ request, onAccept, onReject }) {
             onClick={onReject}
             id="reject-file-btn"
           >
-            <span>✕</span> Decline
+            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>close</span>
+            Decline
           </button>
           <button
             className="btn btn-accept"
             onClick={onAccept}
             id="accept-file-btn"
           >
-            <span>✓</span> Accept
+            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>check</span>
+            Accept
           </button>
         </div>
       </div>

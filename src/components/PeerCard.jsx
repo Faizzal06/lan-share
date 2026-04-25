@@ -41,8 +41,8 @@ export default function PeerCard({ peer, onSendFile, isActive }) {
     e.target.value = '';
   };
 
-  const statusClass = peer.status === 'online' ? 'online' :
-                       peer.status === 'transferring' ? 'transferring' : 'offline';
+  const iconName = getOsIcon(peer.os);
+  const isMobile = peer.os === 'Android' || peer.os === 'iOS';
 
   return (
     <div
@@ -52,14 +52,16 @@ export default function PeerCard({ peer, onSendFile, isActive }) {
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      <div className="peer-avatar">
-        <span className="peer-os-icon">{getOsIcon(peer.os)}</span>
-        <span className={`peer-status-dot ${statusClass}`}></span>
+      <div className="peer-card-top">
+        <div className={`peer-avatar ${isMobile ? 'android' : ''}`}>
+          <span className="material-symbols-outlined">{iconName}</span>
+        </div>
+        <span className="peer-status-badge">Available</span>
       </div>
 
       <div className="peer-info">
-        <h3 className="peer-name">{peer.deviceName}</h3>
-        <span className="peer-browser">{peer.browser}</span>
+        <h3 className="peer-name" title={peer.peerId}>{peer.deviceName || `Device-${peer.peerId?.slice(0, 4).toUpperCase()}`}</h3>
+        <span className="peer-browser">{peer.os} • {peer.browser}</span>
       </div>
 
       <button
@@ -68,10 +70,7 @@ export default function PeerCard({ peer, onSendFile, isActive }) {
         title="Send files to this device"
         id={`send-btn-${peer.peerId}`}
       >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <line x1="22" y1="2" x2="11" y2="13"></line>
-          <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-        </svg>
+        <span className="material-symbols-outlined">upload_file</span>
         <span>Send File</span>
       </button>
 
@@ -87,7 +86,7 @@ export default function PeerCard({ peer, onSendFile, isActive }) {
       {isDragOver && (
         <div className="drop-overlay">
           <div className="drop-overlay-content">
-            <span className="drop-icon">📥</span>
+            <span className="material-symbols-outlined drop-icon">download</span>
             <span>Drop files here</span>
           </div>
         </div>

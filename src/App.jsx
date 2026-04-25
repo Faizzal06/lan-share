@@ -8,8 +8,10 @@ import ToastContainer, { useToast } from './components/Toast';
 import { usePeer } from './hooks/usePeer';
 import { useWebSocket } from './hooks/useWebSocket';
 import { useFileTransfer } from './hooks/useFileTransfer';
+import { getDeviceInfo } from './utils/deviceInfo';
 
 export default function App() {
+  const { deviceName } = getDeviceInfo();
   const { peerId, peerStatus, connectToPeer, sendToPeer, onData, onConnection } = usePeer();
   const { peers, connected, sendSignal, onMessage, wsRef } = useWebSocket(peerId);
   const { transfers, sendFile, handleIncomingData, removeTransfer, clearCompleted } = useFileTransfer(connectToPeer, sendToPeer);
@@ -119,40 +121,100 @@ export default function App() {
 
   return (
     <div className="app" id="app">
-      <Header
-        connected={connected}
-        peerId={peerId}
-        peerStatus={peerStatus}
-      />
+      {/* ── Desktop Sidebar ── */}
+      <aside className="app-sidebar" id="app-sidebar">
+        <div className="sidebar-brand">
+          <h1 className="sidebar-logo">LANShare</h1>
+          <span className="sidebar-version">V1.0.0-Stable</span>
+        </div>
 
-      <main className="main-content" id="main-content">
-        <section className="section-peers" id="section-peers">
-          <div className="section-header">
-            <h2 className="section-title">
-              <span>📡</span> Nearby Devices
-            </h2>
-            <span className="peer-count">{peers.length} found</span>
+        <nav className="sidebar-nav">
+          <a href="#" className="active">
+            <span className="material-symbols-outlined">radar</span>
+            <span>Discover</span>
+          </a>
+          <a href="#">
+            <span className="material-symbols-outlined">swap_horiz</span>
+            <span>Transfers</span>
+          </a>
+          <a href="#">
+            <span className="material-symbols-outlined">history</span>
+            <span>History</span>
+          </a>
+          <a href="#">
+            <span className="material-symbols-outlined">settings</span>
+            <span>Settings</span>
+          </a>
+        </nav>
+
+        <div className="sidebar-footer">
+          <button className="sidebar-send-btn">
+            <span className="material-symbols-outlined">send</span>
+            Send File
+          </button>
+        </div>
+      </aside>
+
+      {/* ── Mobile Header ── */}
+      <div className="main-area">
+        <header className="mobile-header" id="mobile-header">
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div className="mobile-logo">LANShare</div>
+            <div style={{ fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', color: 'var(--on-surface-var)' }}>
+              {deviceName}
+            </div>
           </div>
-          <PeerGrid
-            peers={peers}
-            onSendFile={handleSendFile}
-            activePeerId={activePeerId}
-          />
-        </section>
+          <div className="mobile-actions">
+            <button className="mobile-action-btn">
+              <span className="material-symbols-outlined">lan</span>
+            </button>
+            <button className="mobile-action-btn">
+              <span className="material-symbols-outlined">fingerprint</span>
+            </button>
+            <button className="mobile-action-btn">
+              <span className="material-symbols-outlined">settings</span>
+            </button>
+          </div>
+        </header>
 
-        <TransferList
-          transfers={transfers}
-          onRemove={removeTransfer}
-          onClearCompleted={clearCompleted}
+        {/* ── Desktop Status Bar ── */}
+        <Header
+          connected={connected}
+          peerId={peerId}
+          peerStatus={peerStatus}
+          deviceName={deviceName}
         />
 
-        <ManualConnect onConnect={handleManualConnect} />
-      </main>
+        <main className="main-content" id="main-content">
+          <section className="section-peers" id="section-peers">
+            <div className="section-header">
+              <h2 className="section-title">
+                <span className="material-symbols-outlined">radar</span>
+                Nearby Devices
+              </h2>
+              <span className="peer-count">{peers.length} found</span>
+            </div>
+            <PeerGrid
+              peers={peers}
+              onSendFile={handleSendFile}
+              activePeerId={activePeerId}
+            />
+          </section>
 
-      <footer className="app-footer" id="app-footer">
-        <p>Files are transferred directly between devices. <strong>No data passes through any server.</strong></p>
-        <p className="footer-sub">LANShare P2P · Powered by WebRTC</p>
-      </footer>
+          <TransferList
+            transfers={transfers}
+            onRemove={removeTransfer}
+            onClearCompleted={clearCompleted}
+          />
+
+          <ManualConnect onConnect={handleManualConnect} />
+        </main>
+
+        <footer className="app-footer" id="app-footer">
+          <p>Files are transferred directly between devices. <strong>No data passes through any server.</strong></p>
+          <p className="footer-sub">LANShare P2P · Powered by WebRTC</p>
+        </footer>
+      </div>
 
       <IncomingFileDialog
         request={incomingRequest}
