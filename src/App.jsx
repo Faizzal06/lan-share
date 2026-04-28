@@ -34,12 +34,12 @@ export default function App() {
     const handler = (data) => {
       if (data.type === 'file-request') {
         setIncomingRequest(data);
-        addToast(`Incoming file: ${data.fileName}`, 'info', 6000);
+        addToast(`File masuk: ${data.fileName}`, 'info', 6000);
       } else if (data.type === 'file-response') {
         if (data.accepted) {
-          addToast('File transfer accepted!', 'success');
+          addToast('Transfer file diterima!', 'success');
         } else {
-          addToast('File transfer was declined.', 'warning');
+          addToast('Transfer file ditolak.', 'warning');
         }
       }
     };
@@ -78,9 +78,9 @@ export default function App() {
 
         // Start the P2P transfer directly (for MVP, auto-accept)
         await sendFile(targetPeerId, file);
-        addToast(`Sent: ${file.name}`, 'success');
+        addToast(`Terkirim: ${file.name}`, 'success');
       } catch (err) {
-        addToast(`Failed to send: ${file.name}`, 'error');
+        addToast(`Gagal mengirim: ${file.name}`, 'error');
       }
     }
     setActivePeerId(null);
@@ -93,7 +93,7 @@ export default function App() {
         targetPeerId: incomingRequest.fromPeerId,
         accepted: true,
       });
-      addToast('File transfer accepted', 'success');
+      addToast('Transfer file diterima', 'success');
       setIncomingRequest(null);
     }
   }, [incomingRequest, sendSignal, addToast]);
@@ -105,7 +105,7 @@ export default function App() {
         targetPeerId: incomingRequest.fromPeerId,
         accepted: false,
       });
-      addToast('File transfer declined', 'info');
+      addToast('Transfer file ditolak', 'info');
       setIncomingRequest(null);
     }
   }, [incomingRequest, sendSignal, addToast]);
@@ -113,9 +113,9 @@ export default function App() {
   const handleManualConnect = useCallback(async (remotePeerId) => {
     try {
       await connectToPeer(remotePeerId);
-      addToast(`Connected to ${remotePeerId}`, 'success');
+      addToast(`Terhubung ke ${remotePeerId}`, 'success');
     } catch (err) {
-      addToast(`Failed to connect: ${err.message}`, 'error');
+      addToast(`Gagal terhubung: ${err.message}`, 'error');
     }
   }, [connectToPeer, addToast]);
 
@@ -125,32 +125,32 @@ export default function App() {
       <aside className="app-sidebar" id="app-sidebar">
         <div className="sidebar-brand">
           <h1 className="sidebar-logo">LANShare</h1>
-          <span className="sidebar-version">V1.0.0-Stable</span>
+          <span className="sidebar-version">V1.0.0-Stabil</span>
         </div>
 
         <nav className="sidebar-nav">
           <a href="#" className="active">
             <span className="material-symbols-outlined">radar</span>
-            <span>Discover</span>
+            <span>Temukan</span>
           </a>
           <a href="#">
             <span className="material-symbols-outlined">swap_horiz</span>
-            <span>Transfers</span>
+            <span>Transfer</span>
           </a>
           <a href="#">
             <span className="material-symbols-outlined">history</span>
-            <span>History</span>
+            <span>Riwayat</span>
           </a>
           <a href="#">
             <span className="material-symbols-outlined">settings</span>
-            <span>Settings</span>
+            <span>Pengaturan</span>
           </a>
         </nav>
 
         <div className="sidebar-footer">
           <button className="sidebar-send-btn">
             <span className="material-symbols-outlined">send</span>
-            Send File
+            Kirim File
           </button>
         </div>
       </aside>
@@ -190,9 +190,9 @@ export default function App() {
             <div className="section-header">
               <h2 className="section-title">
                 <span className="material-symbols-outlined">radar</span>
-                Nearby Devices
+                Perangkat Terdekat
               </h2>
-              <span className="peer-count">{peers.length} found</span>
+              <span className="peer-count">{peers.length} ditemukan</span>
             </div>
             <PeerGrid
               peers={peers}
@@ -211,8 +211,8 @@ export default function App() {
         </main>
 
         <footer className="app-footer" id="app-footer">
-          <p>Files are transferred directly between devices. <strong>No data passes through any server.</strong></p>
-          <p className="footer-sub">LANShare P2P · Powered by WebRTC</p>
+          <p>File ditransfer langsung antar perangkat. <strong>Tidak ada data yang melewati server.</strong></p>
+          <p className="footer-sub">LANShare P2P · Ditenagai oleh WebRTC</p>
         </footer>
       </div>
 

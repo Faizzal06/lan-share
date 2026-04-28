@@ -10,7 +10,7 @@ export default function ManualConnect({ onConnect }) {
 
     const trimmed = ip.trim();
     if (!trimmed) {
-      setError('Please enter a Peer ID or IP address');
+      setError('Masukkan ID Peer atau alamat IP');
       return;
     }
 
@@ -23,23 +23,23 @@ export default function ManualConnect({ onConnect }) {
       <div className="section-header">
         <h2 className="section-title">
           <span className="material-symbols-outlined">hub</span>
-          Manual Connect
+          Koneksi Manual
         </h2>
       </div>
       <div className="manual-connect" id="manual-connect">
         <form className="manual-form" onSubmit={handleSubmit}>
-          <label className="manual-label">Enter Peer ID</label>
+          <label className="manual-label">Masukkan ID Peer</label>
           <div className="input-group">
             <input
               type="text"
               className="manual-input"
-              placeholder="e.g. AB-123C"
+              placeholder="mis. AB-123C"
               value={ip}
               onChange={(e) => setIp(e.target.value)}
               id="manual-connect-input"
             />
             <button type="submit" className="btn btn-connect" id="manual-connect-btn">
-              Connect
+              Hubungkan
             </button>
           </div>
           {error && <span className="manual-error">{error}</span>}

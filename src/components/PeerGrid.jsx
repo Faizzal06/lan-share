@@ -12,22 +12,22 @@ export default function PeerGrid({ peers, onSendFile, activePeerId }) {
             <div className="radar-dot"></div>
           </div>
         </div>
-        <h2 className="empty-title">Searching for devices...</h2>
+        <h2 className="empty-title">Mencari perangkat...</h2>
         <p className="empty-subtitle">
-          Make sure other devices are connected to the <strong>same WiFi network</strong> and have LANShare open.
+          Pastikan perangkat lain terhubung ke <strong>jaringan WiFi yang sama</strong> dan membuka LANShare.
         </p>
         <div className="empty-tips">
           <div className="tip">
             <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>wifi</span>
-            <span>Check that WiFi is connected</span>
+            <span>Pastikan WiFi terhubung</span>
           </div>
           <div className="tip">
             <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>link</span>
-            <span>Open the same URL on other devices</span>
+            <span>Buka URL yang sama di perangkat lain</span>
           </div>
           <div className="tip">
             <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>shield</span>
-            <span>Disable AP Isolation on your router if needed</span>
+            <span>Nonaktifkan AP Isolation di router jika perlu</span>
           </div>
         </div>
       </div>

@@ -8,12 +8,12 @@ export default function IncomingFileDialog({ request, onAccept, onReject }) {
       <div className="modal incoming-file-modal" id="incoming-file-modal">
         <div className="modal-header">
           <span className="material-symbols-outlined modal-icon">mail</span>
-          <h2>Incoming File</h2>
+          <h2>File Masuk</h2>
         </div>
 
         <div className="modal-body">
           <p className="incoming-message">
-            <strong>{request.fromDeviceName || 'A device'}</strong> wants to send you a file:
+            <strong>{request.fromDeviceName || 'Sebuah perangkat'}</strong> ingin mengirim file:
           </p>
 
           <div className="file-preview">
@@ -37,7 +37,7 @@ export default function IncomingFileDialog({ request, onAccept, onReject }) {
             id="reject-file-btn"
           >
             <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>close</span>
-            Decline
+            Tolak
           </button>
           <button
             className="btn btn-accept"
@@ -45,7 +45,7 @@ export default function IncomingFileDialog({ request, onAccept, onReject }) {
             id="accept-file-btn"
           >
             <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>check</span>
-            Accept
+            Terima
           </button>
         </div>
       </div>

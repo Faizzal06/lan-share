@@ -56,7 +56,7 @@ export default function PeerCard({ peer, onSendFile, isActive }) {
         <div className={`peer-avatar ${isMobile ? 'android' : ''}`}>
           <span className="material-symbols-outlined">{iconName}</span>
         </div>
-        <span className="peer-status-badge">Available</span>
+        <span className="peer-status-badge">Tersedia</span>
       </div>
 
       <div className="peer-info">
@@ -67,11 +67,11 @@ export default function PeerCard({ peer, onSendFile, isActive }) {
       <button
         className="send-btn"
         onClick={handleClick}
-        title="Send files to this device"
+        title="Kirim file ke perangkat ini"
         id={`send-btn-${peer.peerId}`}
       >
         <span className="material-symbols-outlined">upload_file</span>
-        <span>Send File</span>
+        <span>Kirim File</span>
       </button>
 
       <input
@@ -87,7 +87,7 @@ export default function PeerCard({ peer, onSendFile, isActive }) {
         <div className="drop-overlay">
           <div className="drop-overlay-content">
             <span className="material-symbols-outlined drop-icon">download</span>
-            <span>Drop files here</span>
+            <span>Lepaskan file di sini</span>
           </div>
         </div>
       )}

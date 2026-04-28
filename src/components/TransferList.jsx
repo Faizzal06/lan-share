@@ -23,11 +23,11 @@ export default function TransferList({ transfers, onRemove, onClearCompleted }) 
       <div className="transfer-list-header">
         <h2 className="transfer-list-title">
           <span className="material-symbols-outlined">sync</span>
-          Active Transfers
+          Transfer Aktif
         </h2>
         {hasCompleted && (
           <button className="clear-btn" onClick={onClearCompleted} id="clear-completed-btn">
-            Clear completed
+            Hapus yang selesai
           </button>
         )}
       </div>
@@ -65,18 +65,18 @@ function TransferItem({ transfer, onRemove }) {
 
         <div className="transfer-item-meta">
           <span className={`direction-badge ${transfer.direction}`}>
-            {transfer.direction === 'send' ? '↑ Sending' : '↓ Receiving'}
+            {transfer.direction === 'send' ? '↑ Mengirim' : '↓ Menerima'}
           </span>
 
           {transfer.status === 'transferring' && (
             <>
               <span className="transfer-speed">{formatSpeed(transfer.speed)}</span>
-              <span className="transfer-eta">ETA: {formatETA(eta)}</span>
+              <span className="transfer-eta">Estimasi: {formatETA(eta)}</span>
             </>
           )}
 
-          {isComplete && <span className="transfer-done">✓ Complete</span>}
-          {isError && <span className="transfer-error">✗ Failed</span>}
+          {isComplete && <span className="transfer-done">✓ Selesai</span>}
+          {isError && <span className="transfer-error">✕ Gagal</span>}
         </div>
 
         <div className="progress-bar-wrapper">
@@ -93,7 +93,7 @@ function TransferItem({ transfer, onRemove }) {
         <button
           className="transfer-remove-btn"
           onClick={() => onRemove(transfer.id)}
-          title="Dismiss"
+          title="Tutup"
         >
           ✕
         </button>
