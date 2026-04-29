@@ -116,6 +116,8 @@ wss.on('connection', (ws, req) => {
             targetPeer.ws.send(JSON.stringify({
               type: 'file-request',
               fromPeerId: peerId,
+              fromDeviceName: data.fromDeviceName || 'Unknown Device',
+              transferId: data.transferId,
               fileName: data.fileName,
               fileSize: data.fileSize,
               fileType: data.fileType,

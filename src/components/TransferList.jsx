@@ -68,6 +68,10 @@ function TransferItem({ transfer, onRemove }) {
             {transfer.direction === 'send' ? '↑ Mengirim' : '↓ Menerima'}
           </span>
 
+          {transfer.status === 'waiting' && (
+            <span className="transfer-waiting">⏳ Menunggu persetujuan...</span>
+          )}
+
           {transfer.status === 'transferring' && (
             <>
               <span className="transfer-speed">{formatSpeed(transfer.speed)}</span>
@@ -76,7 +80,7 @@ function TransferItem({ transfer, onRemove }) {
           )}
 
           {isComplete && <span className="transfer-done">✓ Selesai</span>}
-          {isError && <span className="transfer-error">✕ Gagal</span>}
+          {isError && <span className="transfer-error">✕ {transfer.error || 'Gagal'}</span>}
         </div>
 
         <div className="progress-bar-wrapper">

@@ -280,6 +280,10 @@ body {
 .transfer-speed, .transfer-eta { color: var(--on-surface-var); font-weight: 600; font-size: 12px; text-transform: uppercase; }
 .transfer-done { color: var(--tertiary); font-weight: 700; }
 .transfer-error { color: var(--error); font-weight: 700; }
+.transfer-waiting { color: var(--primary); font-weight: 700; font-size: 14px; animation: waitingPulse 1.5s ease-in-out infinite; }
+.transfer-item.waiting { border-color: var(--outline-var); opacity: 0.85; }
+
+@keyframes waitingPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
 .transfer-percentage { font-size: 48px; font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; flex-shrink: 0; }
 

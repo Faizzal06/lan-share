@@ -14,7 +14,16 @@ export default function App() {
   const { deviceName } = getDeviceInfo();
   const { peerId, peerStatus, connectToPeer, sendToPeer, onData, onConnection } = usePeer();
   const { peers, connected, sendSignal, onMessage, wsRef } = useWebSocket(peerId);
-  const { transfers, sendFile, handleIncomingData, removeTransfer, clearCompleted } = useFileTransfer(connectToPeer, sendToPeer);
+  const {
+    transfers,
+    requestSendFile,
+    startTransfer,
+    cancelPendingTransfer,
+    findPendingTransfer,
+    handleIncomingData,
+    removeTransfer,
+    clearCompleted,
+  } = useFileTransfer(connectToPeer, sendToPeer);
   const { toasts, addToast, removeToast } = useToast();
 
   const [incomingRequest, setIncomingRequest] = useState(null);
@@ -33,13 +42,22 @@ export default function App() {
 
     const handler = (data) => {
       if (data.type === 'file-request') {
+        // Receiver side: show the accept/decline dialog
         setIncomingRequest(data);
         addToast(`File masuk: ${data.fileName}`, 'info', 6000);
       } else if (data.type === 'file-response') {
+        // Sender side: receiver responded to our file-request
+        const transferId = findPendingTransfer(data.fromPeerId);
         if (data.accepted) {
           addToast('Transfer file diterima!', 'success');
+          if (transferId) {
+            startTransfer(transferId);
+          }
         } else {
           addToast('Transfer file ditolak.', 'warning');
+          if (transferId) {
+            cancelPendingTransfer(transferId);
+          }
         }
       }
     };
@@ -54,7 +72,7 @@ export default function App() {
 
     ws.addEventListener('message', listener);
     return () => ws.removeEventListener('message', listener);
-  }, [wsRef.current, addToast]);
+  }, [wsRef.current, addToast, findPendingTransfer, startTransfer, cancelPendingTransfer]);
 
   // Notify when peers join/leave
   useEffect(() => {
@@ -67,24 +85,27 @@ export default function App() {
     setActivePeerId(targetPeerId);
     for (const file of files) {
       try {
-        // Send signal via WebSocket to ask permission
+        // Queue the file — this does NOT start sending yet
+        const transferId = requestSendFile(targetPeerId, file);
+
+        // Send signal via WebSocket to ask receiver for permission
         sendSignal({
           type: 'file-request',
           targetPeerId,
+          transferId,
           fileName: file.name,
           fileSize: file.size,
           fileType: file.type,
+          fromDeviceName: deviceName,
         });
 
-        // Start the P2P transfer directly (for MVP, auto-accept)
-        await sendFile(targetPeerId, file);
-        addToast(`Terkirim: ${file.name}`, 'success');
+        addToast(`Menunggu persetujuan: ${file.name}`, 'info');
       } catch (err) {
         addToast(`Gagal mengirim: ${file.name}`, 'error');
       }
     }
     setActivePeerId(null);
-  }, [sendFile, sendSignal, addToast]);
+  }, [requestSendFile, sendSignal, addToast, deviceName]);
 
   const handleAcceptFile = useCallback(() => {
     if (incomingRequest) {
