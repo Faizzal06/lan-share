@@ -6,6 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { fileURLToPath } from 'url';
 import path from 'path';
 import os from 'os';
+import crypto from 'crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -35,6 +36,27 @@ const wss = new WebSocketServer({ noServer: true });
 // Track connected peers: Map<peerId, { ws, info }>
 const peers = new Map();
 
+/**
+ * Extract the real client IP from request headers.
+ * Priority: CF-Connecting-IP > X-Forwarded-For > X-Real-IP > socket
+ */
+function getClientIp(req) {
+  return req.headers['cf-connecting-ip']
+    || (req.headers['x-forwarded-for'] || '').split(',')[0].trim()
+    || req.headers['x-real-ip']
+    || req.socket.remoteAddress;
+}
+
+/**
+ * Hash an IP address into a short, privacy-safe network ID.
+ * Peers sharing the same public IP (same LAN/WiFi) get the same networkId.
+ */
+function hashIp(ip) {
+  if (!ip) return 'net-unknown';
+  const hash = crypto.createHash('sha256').update(ip).digest('hex').slice(0, 12);
+  return 'net-' + hash;
+}
+
 function broadcastPeerList() {
   const peerList = [];
   for (const [id, peer] of peers) {
@@ -43,6 +65,7 @@ function broadcastPeerList() {
       deviceName: peer.info.deviceName,
       browser: peer.info.browser,
       os: peer.info.os,
+      networkId: hashIp(peer.info.publicIp),
       status: 'online',
     });
   }
@@ -66,7 +89,7 @@ function broadcastToOthers(senderWs, data) {
 }
 
 wss.on('connection', (ws, req) => {
-  const clientIp = req.socket.remoteAddress;
+  const clientIp = getClientIp(req);
   let peerId = null;
 
   console.log(`[WS] New connection from ${clientIp}`);
@@ -83,17 +106,26 @@ wss.on('connection', (ws, req) => {
       switch (data.type) {
         case 'register': {
           peerId = data.peerId;
+          const publicIp = clientIp;
+          const networkId = hashIp(publicIp);
+
           peers.set(peerId, {
             ws,
             info: {
               deviceName: data.deviceName || 'Unknown Device',
               browser: data.browser || 'Unknown',
               os: data.os || 'Unknown',
-              ip: clientIp,
+              publicIp,
             },
           });
 
-          console.log(`[WS] Peer registered: ${peerId} (${data.deviceName})`);
+          console.log(`[WS] Peer registered: ${peerId} (${data.deviceName}) IP: ${publicIp} Network: ${networkId}`);
+
+          // Send the client its own network ID so the frontend can group peers
+          ws.send(JSON.stringify({
+            type: 'self-network',
+            networkId,
+          }));
 
           // Send current peer list to the new peer
           broadcastPeerList();
@@ -105,6 +137,7 @@ wss.on('connection', (ws, req) => {
             deviceName: data.deviceName,
             browser: data.browser,
             os: data.os,
+            networkId,
           });
           break;
         }

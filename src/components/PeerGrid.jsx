@@ -1,6 +1,6 @@
 import PeerCard from './PeerCard';
 
-export default function PeerGrid({ peers, onSendFile, activePeerId }) {
+export default function PeerGrid({ peers, onSendFile, activePeerId, selfNetworkId }) {
   if (peers.length === 0) {
     return (
       <div className="empty-state" id="empty-state">
@@ -34,16 +34,59 @@ export default function PeerGrid({ peers, onSendFile, activePeerId }) {
     );
   }
 
+  // Split peers into local network and other networks
+  const localPeers = peers.filter(p => selfNetworkId && p.networkId === selfNetworkId);
+  const remotePeers = peers.filter(p => !selfNetworkId || p.networkId !== selfNetworkId);
+
   return (
-    <div className="peer-grid" id="peer-grid">
-      {peers.map((peer) => (
-        <PeerCard
-          key={peer.peerId}
-          peer={peer}
-          onSendFile={onSendFile}
-          isActive={activePeerId === peer.peerId}
-        />
-      ))}
+    <div className="peer-groups" id="peer-groups">
+      {/* ── Local Network Group ── */}
+      {localPeers.length > 0 && (
+        <div className="peer-group" id="peer-group-local">
+          <div className="peer-group-header">
+            <div className="peer-group-label local">
+              <span className="material-symbols-outlined">wifi</span>
+              <span>Jaringan Lokal · <em>Local Network</em></span>
+            </div>
+            <span className="peer-group-count">{localPeers.length}</span>
+          </div>
+          <div className="peer-grid" id="peer-grid-local">
+            {localPeers.map((peer) => (
+              <PeerCard
+                key={peer.peerId}
+                peer={peer}
+                onSendFile={onSendFile}
+                isActive={activePeerId === peer.peerId}
+                isLocal={true}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Remote Networks Group ── */}
+      {remotePeers.length > 0 && (
+        <div className="peer-group" id="peer-group-remote">
+          <div className="peer-group-header">
+            <div className="peer-group-label remote">
+              <span className="material-symbols-outlined">language</span>
+              <span>Jaringan Lain · <em>Other Networks</em></span>
+            </div>
+            <span className="peer-group-count">{remotePeers.length}</span>
+          </div>
+          <div className="peer-grid" id="peer-grid-remote">
+            {remotePeers.map((peer) => (
+              <PeerCard
+                key={peer.peerId}
+                peer={peer}
+                onSendFile={onSendFile}
+                isActive={activePeerId === peer.peerId}
+                isLocal={false}
+              />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

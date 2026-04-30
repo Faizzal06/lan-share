@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { getOsIcon } from '../utils/deviceInfo';
 
-export default function PeerCard({ peer, onSendFile, isActive }) {
+export default function PeerCard({ peer, onSendFile, isActive, isLocal }) {
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef(null);
 
@@ -56,7 +56,15 @@ export default function PeerCard({ peer, onSendFile, isActive }) {
         <div className={`peer-avatar ${isMobile ? 'android' : ''}`}>
           <span className="material-symbols-outlined">{iconName}</span>
         </div>
-        <span className="peer-status-badge">Tersedia</span>
+        <div className="peer-badges">
+          {isLocal && (
+            <span className="peer-network-badge local">
+              <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>wifi</span>
+              LAN
+            </span>
+          )}
+          <span className="peer-status-badge">Tersedia</span>
+        </div>
       </div>
 
       <div className="peer-info">

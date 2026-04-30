@@ -8,6 +8,7 @@ import { getDeviceInfo } from '../utils/deviceInfo';
 export function useWebSocket(peerId) {
   const [peers, setPeers] = useState([]);
   const [connected, setConnected] = useState(false);
+  const [selfNetworkId, setSelfNetworkId] = useState(null);
   const wsRef = useRef(null);
   const reconnectTimer = useRef(null);
 
@@ -39,6 +40,10 @@ export function useWebSocket(peerId) {
         const data = JSON.parse(event.data);
 
         switch (data.type) {
+          case 'self-network':
+            setSelfNetworkId(data.networkId);
+            break;
+
           case 'peer-list':
             // Filter out ourselves
             setPeers(data.peers.filter(p => p.peerId !== peerId));
@@ -54,6 +59,7 @@ export function useWebSocket(peerId) {
                   deviceName: data.deviceName,
                   browser: data.browser,
                   os: data.os,
+                  networkId: data.networkId,
                   status: 'online',
                 }];
               });
@@ -116,5 +122,5 @@ export function useWebSocket(peerId) {
     return () => {};
   }, []);
 
-  return { peers, connected, sendSignal, onMessage, wsRef };
+  return { peers, connected, selfNetworkId, sendSignal, onMessage, wsRef };
 }

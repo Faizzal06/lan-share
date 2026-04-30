@@ -149,6 +149,45 @@ body {
   border: 2px solid var(--border); box-shadow: var(--shadow-sm);
 }
 
+/* ── PEER GROUPS ───────────────────────────── */
+.peer-groups { display: flex; flex-direction: column; gap: 32px; }
+
+.peer-group { display: flex; flex-direction: column; gap: 16px; }
+
+.peer-group-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px; background: var(--surface);
+  border: 3px solid var(--border); box-shadow: var(--shadow-sm);
+}
+
+.peer-group-label {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+}
+.peer-group-label em { font-style: italic; font-weight: 500; text-transform: none; color: var(--on-surface-var); font-size: 13px; }
+.peer-group-label .material-symbols-outlined { font-size: 20px; }
+.peer-group-label.local { color: var(--tertiary); }
+.peer-group-label.local .material-symbols-outlined { color: var(--tertiary); }
+.peer-group-label.remote { color: var(--on-surface-var); }
+
+.peer-group-count {
+  font-size: 13px; font-weight: 700;
+  padding: 2px 10px; background: var(--surface-dim);
+  border: 2px solid var(--border); box-shadow: var(--shadow-sm);
+}
+
+/* ── PEER CARD BADGES ─────────────────────── */
+.peer-badges { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+
+.peer-network-badge {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+  padding: 3px 8px; border: 2px solid var(--border); box-shadow: var(--shadow-sm);
+}
+.peer-network-badge.local {
+  background: var(--tertiary-container); color: var(--on-surface);
+}
+
 /* ── PEER GRID ─────────────────────────────── */
 .peer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; }
 
