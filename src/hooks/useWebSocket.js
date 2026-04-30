@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { getDeviceInfo } from '../utils/deviceInfo';
 
 /**
@@ -10,6 +10,29 @@ export function useWebSocket(peerId) {
   const [connected, setConnected] = useState(false);
   const wsRef = useRef(null);
   const reconnectTimer = useRef(null);
+
+  // Group peers by subnet
+  const groupedPeers = useMemo(() => {
+    const groups = {};
+    peers.forEach(peer => {
+      const subnet = peer.subnet || 'unknown';
+      if (!groups[subnet]) {
+        groups[subnet] = {
+          subnet,
+          isLocal: peer.isLocal,
+          peers: [],
+        };
+      }
+      groups[subnet].peers.push(peer);
+    });
+
+    // Convert to array and sort: local networks first
+    return Object.values(groups).sort((a, b) => {
+      if (a.isLocal && !b.isLocal) return -1;
+      if (!a.isLocal && b.isLocal) return 1;
+      return a.subnet.localeCompare(b.subnet);
+    });
+  }, [peers]);
 
   const connect = useCallback(() => {
     if (!peerId) return;
@@ -55,6 +78,8 @@ export function useWebSocket(peerId) {
                   browser: data.browser,
                   os: data.os,
                   status: 'online',
+                  subnet: data.subnet || 'unknown',
+                  isLocal: data.isLocal || false,
                 }];
               });
             }
@@ -116,5 +141,5 @@ export function useWebSocket(peerId) {
     return () => {};
   }, []);
 
-  return { peers, connected, sendSignal, onMessage, wsRef };
+  return { peers, groupedPeers, connected, sendSignal, onMessage, wsRef };
 }

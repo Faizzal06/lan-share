@@ -13,7 +13,7 @@ import { getDeviceInfo } from './utils/deviceInfo';
 export default function App() {
   const { deviceName } = getDeviceInfo();
   const { peerId, peerStatus, connectToPeer, sendToPeer, onData, onConnection } = usePeer();
-  const { peers, connected, sendSignal, onMessage, wsRef } = useWebSocket(peerId);
+  const { peers, groupedPeers, connected, sendSignal, onMessage, wsRef } = useWebSocket(peerId);
   const {
     transfers,
     requestSendFile,
@@ -216,6 +216,7 @@ export default function App() {
               <span className="peer-count">{peers.length} ditemukan</span>
             </div>
             <PeerGrid
+              groupedPeers={groupedPeers}
               peers={peers}
               onSendFile={handleSendFile}
               activePeerId={activePeerId}

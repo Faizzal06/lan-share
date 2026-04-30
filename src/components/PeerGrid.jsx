@@ -1,6 +1,6 @@
 import PeerCard from './PeerCard';
 
-export default function PeerGrid({ peers, onSendFile, activePeerId }) {
+export default function PeerGrid({ groupedPeers, peers, onSendFile, activePeerId }) {
   if (peers.length === 0) {
     return (
       <div className="empty-state" id="empty-state">
@@ -36,13 +36,37 @@ export default function PeerGrid({ peers, onSendFile, activePeerId }) {
 
   return (
     <div className="peer-grid" id="peer-grid">
-      {peers.map((peer) => (
-        <PeerCard
-          key={peer.peerId}
-          peer={peer}
-          onSendFile={onSendFile}
-          isActive={activePeerId === peer.peerId}
-        />
+      {groupedPeers.map((group) => (
+        <div key={group.subnet} className="peer-group">
+          <div className="peer-group-header">
+            <div className="peer-group-title">
+              {group.isLocal ? (
+                <>
+                  <span className="material-symbols-outlined">wifi</span>
+                  <span>Local Network</span>
+                </>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined">public</span>
+                  <span>Remote Network</span>
+                </>
+              )}
+              <span className="peer-group-subnet">{group.subnet}</span>
+            </div>
+            <span className="peer-group-count">{group.peers.length} device{group.peers.length !== 1 ? 's' : ''}</span>
+          </div>
+          <div className="peer-group-list">
+            {group.peers.map((peer) => (
+              <PeerCard
+                key={peer.peerId}
+                peer={peer}
+                onSendFile={onSendFile}
+                isActive={activePeerId === peer.peerId}
+                isLocal={group.isLocal}
+              />
+            ))}
+          </div>
+        </div>
       ))}
     </div>
   );

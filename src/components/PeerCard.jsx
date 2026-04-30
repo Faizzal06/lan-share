@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { getOsIcon } from '../utils/deviceInfo';
 
-export default function PeerCard({ peer, onSendFile, isActive }) {
+export default function PeerCard({ peer, onSendFile, isActive, isLocal }) {
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef(null);
 
@@ -46,17 +46,20 @@ export default function PeerCard({ peer, onSendFile, isActive }) {
 
   return (
     <div
-      className={`peer-card ${isDragOver ? 'drag-over' : ''} ${isActive ? 'active' : ''}`}
+      className={`peer-card ${isDragOver ? 'drag-over' : ''} ${isActive ? 'active' : ''} ${isLocal ? 'local-peer' : ''}`}
       id={`peer-card-${peer.peerId}`}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
       <div className="peer-card-top">
-        <div className={`peer-avatar ${isMobile ? 'android' : ''}`}>
+        <div className={`peer-avatar ${isMobile ? 'android' : ''} ${isLocal ? 'local-avatar' : ''}`}>
           <span className="material-symbols-outlined">{iconName}</span>
+          {isLocal && <span className="local-badge" title="Satu jaringan dengan Anda">🟢</span>}
         </div>
-        <span className="peer-status-badge">Tersedia</span>
+        <span className={`peer-status-badge ${isLocal ? 'local-badge-text' : ''}`}>
+          {isLocal ? 'Tersedia (Local)' : 'Tersedia'}
+        </span>
       </div>
 
       <div className="peer-info">

@@ -36,6 +36,7 @@ const wss = new WebSocketServer({ noServer: true });
 const peers = new Map();
 
 function broadcastPeerList() {
+  // Build peer list with subnet info
   const peerList = [];
   for (const [id, peer] of peers) {
     peerList.push({
@@ -44,8 +45,26 @@ function broadcastPeerList() {
       browser: peer.info.browser,
       os: peer.info.os,
       status: 'online',
+      ip: peer.info.ip,
+      subnet: getSubnet(peer.info.ip),
+      isLocal: isLocalNetwork(peer.info.ip),
     });
   }
+
+  // Sort: local network first, then by subnet
+  peerList.sort((a, b) => {
+    // Local network devices first
+    if (a.isLocal && !b.isLocal) return -1;
+    if (!a.isLocal && b.isLocal) return 1;
+    
+    // Then group by subnet
+    if (a.subnet !== b.subnet) {
+      return a.subnet.localeCompare(b.subnet);
+    }
+    
+    // Within same subnet, sort by device name
+    return a.deviceName.localeCompare(b.deviceName);
+  });
 
   const message = JSON.stringify({ type: 'peer-list', peers: peerList });
 
@@ -66,7 +85,9 @@ function broadcastToOthers(senderWs, data) {
 }
 
 wss.on('connection', (ws, req) => {
-  const clientIp = req.socket.remoteAddress;
+  // Get real client IP from Cloudflare header or fallback to socket
+  const forwarded = req.headers['x-forwarded-for'];
+  const clientIp = forwarded ? forwarded.split(',')[0].trim() : req.socket.remoteAddress;
   let peerId = null;
 
   console.log(`[WS] New connection from ${clientIp}`);
@@ -105,6 +126,8 @@ wss.on('connection', (ws, req) => {
             deviceName: data.deviceName,
             browser: data.browser,
             os: data.os,
+            subnet: getSubnet(clientIp),
+            isLocal: isLocalNetwork(clientIp),
           });
           break;
         }
@@ -159,6 +182,41 @@ wss.on('connection', (ws, req) => {
     console.error('[WS] Connection error:', err);
   });
 });
+
+// ── Helper Functions ────────────────────────────────────────────────
+
+// Extract subnet (/24) from IP address
+function getSubnet(ip) {
+  if (!ip || ip === 'unknown') return 'unknown';
+  const parts = ip.split('.');
+  if (parts.length === 4) {
+    return `${parts[0]}.${parts[1]}.${parts[2]}.x`;
+  }
+  return 'unknown';
+}
+
+// Check if IP is in local network (private IP ranges)
+function isLocalNetwork(ip) {
+  if (!ip) return false;
+  return ip.startsWith('192.168.') || 
+         ip.startsWith('10.') || 
+         ip.startsWith('172.16.') || 
+         ip.startsWith('172.17.') || 
+         ip.startsWith('172.18.') || 
+         ip.startsWith('172.19.') || 
+         ip.startsWith('172.20.') || 
+         ip.startsWith('172.21.') || 
+         ip.startsWith('172.22.') || 
+         ip.startsWith('172.23.') || 
+         ip.startsWith('172.24.') || 
+         ip.startsWith('172.25.') || 
+         ip.startsWith('172.26.') || 
+         ip.startsWith('172.27.') || 
+         ip.startsWith('172.28.') || 
+         ip.startsWith('172.29.') || 
+         ip.startsWith('172.30.') || 
+         ip.startsWith('172.31.');
+}
 
 // ── Heartbeat (detect stale connections) ───────────────────────────
 const heartbeatInterval = setInterval(() => {
