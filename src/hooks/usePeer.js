@@ -15,50 +15,78 @@ export function usePeer() {
   const onConnectionHandlerRef = useRef(null);
 
   useEffect(() => {
-    const peer = new Peer({
-      host: window.location.hostname,
-      port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
-      path: '/peerjs',
-      secure: window.location.protocol === 'https:',
-      config: {
-        iceServers: [
-          { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' },
-        ],
-      },
-    });
+    let cancelled = false;
 
-    peerRef.current = peer;
+    async function initPeer() {
+      // Fetch ICE server configuration (STUN + TURN) from the server
+      let iceServers = [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+      ];
 
-    peer.on('open', (id) => {
-      setPeerId(id);
-      setPeerStatus('connected');
-      console.log('[Peer] Connected with ID:', id);
-    });
-
-    peer.on('connection', (conn) => {
-      console.log('[Peer] Incoming connection from:', conn.peer);
-      setupConnection(conn);
-      if (onConnectionHandlerRef.current) {
-        onConnectionHandlerRef.current(conn);
+      try {
+        const res = await fetch('/api/ice-servers');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.iceServers?.length) {
+            iceServers = data.iceServers;
+          }
+        }
+      } catch (err) {
+        console.warn('[Peer] Failed to fetch ICE servers, using defaults:', err);
       }
-    });
 
-    peer.on('error', (err) => {
-      console.error('[Peer] Error:', err);
-      if (err.type === 'unavailable-id' || err.type === 'server-error') {
-        setPeerStatus('error');
-      }
-    });
+      if (cancelled) return;
 
-    peer.on('disconnected', () => {
-      console.log('[Peer] Disconnected from server, reconnecting...');
-      setPeerStatus('connecting');
-      peer.reconnect();
-    });
+      console.log('[Peer] Using ICE servers:', iceServers.map(s => s.urls));
+
+      const peer = new Peer({
+        host: window.location.hostname,
+        port: window.location.port || (window.location.protocol === 'https:' ? 443 : 80),
+        path: '/peerjs',
+        secure: window.location.protocol === 'https:',
+        config: {
+          iceServers,
+        },
+      });
+
+      peerRef.current = peer;
+
+      peer.on('open', (id) => {
+        setPeerId(id);
+        setPeerStatus('connected');
+        console.log('[Peer] Connected with ID:', id);
+      });
+
+      peer.on('connection', (conn) => {
+        console.log('[Peer] Incoming connection from:', conn.peer);
+        setupConnection(conn);
+        if (onConnectionHandlerRef.current) {
+          onConnectionHandlerRef.current(conn);
+        }
+      });
+
+      peer.on('error', (err) => {
+        console.error('[Peer] Error:', err);
+        if (err.type === 'unavailable-id' || err.type === 'server-error') {
+          setPeerStatus('error');
+        }
+      });
+
+      peer.on('disconnected', () => {
+        console.log('[Peer] Disconnected from server, reconnecting...');
+        setPeerStatus('connecting');
+        peer.reconnect();
+      });
+    }
+
+    initPeer();
 
     return () => {
-      peer.destroy();
+      cancelled = true;
+      if (peerRef.current) {
+        peerRef.current.destroy();
+      }
     };
   }, []);
 
@@ -114,12 +142,12 @@ export function usePeer() {
         reject(err);
       });
 
-      // Timeout after 10 seconds
+      // Timeout after 30 seconds (increased for TURN relay connections)
       setTimeout(() => {
         if (!conn.open) {
           reject(new Error('Connection timeout'));
         }
-      }, 10000);
+      }, 30000);
     });
   }, []);
 

@@ -23,6 +23,57 @@ const peerServer = ExpressPeerServer(server, {
 });
 app.use('/peerjs', peerServer);
 
+// ── ICE Servers Configuration ──────────────────────────────────────
+// Builds the ICE server list with STUN + TURN.
+// Configure via environment variables:
+//   TURN_URL       - e.g. "turn:turn.example.com:3478"
+//   TURN_USERNAME  - TURN username
+//   TURN_CREDENTIAL - TURN credential/password
+function getIceServers() {
+  const servers = [
+    { urls: 'stun:stun.cloudflare.com:3478' },
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+  ];
+
+  // Add configured TURN server(s)
+  if (process.env.TURN_URL) {
+    servers.push({
+      urls: process.env.TURN_URL,
+      username: process.env.TURN_USERNAME || '',
+      credential: process.env.TURN_CREDENTIAL || '',
+    });
+  }
+
+  // Add free community TURN servers as fallback
+  // These provide basic relay capability for cross-network transfers
+  servers.push(
+    {
+      urls: 'turn:openrelay.metered.ca:80',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    }
+  );
+
+  return servers;
+}
+
+// Endpoint for clients to fetch ICE config dynamically
+app.get('/api/ice-servers', (req, res) => {
+  res.json({ iceServers: getIceServers() });
+});
+
 // ── Serve React build in production ────────────────────────────────
 const distPath = path.join(__dirname, '..', 'dist');
 app.use(express.static(distPath));
