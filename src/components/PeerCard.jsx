@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { getOsIcon } from '../utils/deviceInfo';
 
-export default function PeerCard({ peer, onSendFile, isActive, isLocal }) {
+export default function PeerCard({ peer, onSendFile, onSendText, isActive, isLocal }) {
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef(null);
 
@@ -41,6 +41,12 @@ export default function PeerCard({ peer, onSendFile, isActive, isLocal }) {
     e.target.value = '';
   };
 
+  const handleTextClick = () => {
+    if (onSendText) {
+      onSendText(peer.peerId, peer.deviceName);
+    }
+  };
+
   const iconName = getOsIcon(peer.os);
   const isMobile = peer.os === 'Android' || peer.os === 'iOS';
 
@@ -72,15 +78,27 @@ export default function PeerCard({ peer, onSendFile, isActive, isLocal }) {
         <span className="peer-browser">{peer.os} • {peer.browser}</span>
       </div>
 
-      <button
-        className="send-btn"
-        onClick={handleClick}
-        title="Kirim file ke perangkat ini"
-        id={`send-btn-${peer.peerId}`}
-      >
-        <span className="material-symbols-outlined">upload_file</span>
-        <span>Kirim File</span>
-      </button>
+      <div className="peer-card-actions">
+        <button
+          className="send-btn"
+          onClick={handleClick}
+          title="Kirim file ke perangkat ini"
+          id={`send-btn-${peer.peerId}`}
+        >
+          <span className="material-symbols-outlined">upload_file</span>
+          <span>File</span>
+        </button>
+
+        <button
+          className="send-btn send-text-btn"
+          onClick={handleTextClick}
+          title="Kirim teks/clipboard ke perangkat ini"
+          id={`send-text-btn-${peer.peerId}`}
+        >
+          <span className="material-symbols-outlined">content_paste</span>
+          <span>Teks</span>
+        </button>
+      </div>
 
       <input
         ref={fileInputRef}

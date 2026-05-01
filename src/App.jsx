@@ -4,6 +4,7 @@ import PeerGrid from './components/PeerGrid';
 import TransferList from './components/TransferList';
 import ManualConnect from './components/ManualConnect';
 import IncomingFileDialog from './components/IncomingFileDialog';
+import { SendTextDialog, IncomingTextDialog } from './components/TextShareDialog';
 import ToastContainer, { useToast } from './components/Toast';
 import { usePeer } from './hooks/usePeer';
 import { useWebSocket } from './hooks/useWebSocket';
@@ -29,6 +30,10 @@ export default function App() {
   const [incomingRequest, setIncomingRequest] = useState(null);
   const [activePeerId, setActivePeerId] = useState(null);
 
+  // Text share state
+  const [textDialogTarget, setTextDialogTarget] = useState(null); // { peerId, deviceName }
+  const [incomingText, setIncomingText] = useState(null); // { fromPeerId, fromDeviceName, text }
+
   // Wire up PeerJS data handler to file transfer logic
   useEffect(() => {
     onData((fromPeerId, data) => {
@@ -36,7 +41,7 @@ export default function App() {
     });
   }, [onData, handleIncomingData]);
 
-  // Listen for WebSocket signals (file-request, file-response)
+  // Listen for WebSocket signals (file-request, file-response, text-incoming)
   useEffect(() => {
     if (!wsRef.current) return;
 
@@ -59,6 +64,14 @@ export default function App() {
             cancelPendingTransfer(transferId);
           }
         }
+      } else if (data.type === 'text-incoming') {
+        // Receiver side: someone sent us text
+        setIncomingText({
+          fromPeerId: data.fromPeerId,
+          fromDeviceName: data.fromDeviceName,
+          text: data.text,
+        });
+        addToast(`Teks masuk dari ${data.fromDeviceName || 'Perangkat'}`, 'info', 6000);
       }
     };
 
@@ -107,6 +120,33 @@ export default function App() {
     setActivePeerId(null);
   }, [requestSendFile, sendSignal, addToast, deviceName]);
 
+  // ── Text share handlers ──
+  const handleOpenTextDialog = useCallback((peerId, peerDeviceName) => {
+    setTextDialogTarget({ peerId, deviceName: peerDeviceName });
+  }, []);
+
+  const handleSendText = useCallback((targetPeerId, text) => {
+    sendSignal({
+      type: 'text-send',
+      targetPeerId,
+      text,
+      fromDeviceName: deviceName,
+    });
+    addToast('Teks terkirim!', 'success');
+  }, [sendSignal, addToast, deviceName]);
+
+  const handleCloseTextDialog = useCallback(() => {
+    setTextDialogTarget(null);
+  }, []);
+
+  const handleCloseIncomingText = useCallback(() => {
+    setIncomingText(null);
+  }, []);
+
+  const handleTextCopied = useCallback(() => {
+    addToast('Teks disalin ke clipboard!', 'success');
+  }, [addToast]);
+
   const handleAcceptFile = useCallback(() => {
     if (incomingRequest) {
       sendSignal({
@@ -146,7 +186,7 @@ export default function App() {
       <aside className="app-sidebar" id="app-sidebar">
         <div className="sidebar-brand">
           <h1 className="sidebar-logo">LANShare</h1>
-          <span className="sidebar-version">V1.0.0-Stabil</span>
+          <span className="sidebar-version">V1.2.0-Stabil</span>
         </div>
 
         <nav className="sidebar-nav">
@@ -218,6 +258,7 @@ export default function App() {
             <PeerGrid
               peers={peers}
               onSendFile={handleSendFile}
+              onSendText={handleOpenTextDialog}
               activePeerId={activePeerId}
               selfNetworkId={selfNetworkId}
             />
@@ -233,8 +274,8 @@ export default function App() {
         </main>
 
         <footer className="app-footer" id="app-footer">
-          <p>File ditransfer langsung antar perangkat. <strong>Tidak ada data yang melewati server.</strong></p>
-          <p className="footer-sub">LANShare P2P · Ditenagai oleh WebRTC</p>
+          <p>File & teks ditransfer langsung antar perangkat. <strong>Tidak ada data yang melewati server.</strong></p>
+          <p className="footer-sub">LANShare P2P · made with ❤️ by Faizal</p>
         </footer>
       </div>
 
@@ -244,7 +285,24 @@ export default function App() {
         onReject={handleRejectFile}
       />
 
+      {/* ── Text Share Dialogs ── */}
+      {textDialogTarget && (
+        <SendTextDialog
+          targetPeerId={textDialogTarget.peerId}
+          targetDeviceName={textDialogTarget.deviceName}
+          onSend={handleSendText}
+          onClose={handleCloseTextDialog}
+        />
+      )}
+
+      <IncomingTextDialog
+        request={incomingText}
+        onCopy={handleTextCopied}
+        onClose={handleCloseIncomingText}
+      />
+
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
 }
+

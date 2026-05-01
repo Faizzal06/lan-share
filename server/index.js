@@ -223,6 +223,21 @@ wss.on('connection', (ws, req) => {
           break;
         }
 
+        case 'text-send': {
+          // Forward text directly to the target peer via WebSocket
+          // Text is small enough that we don't need P2P data channel
+          const textTarget = peers.get(data.targetPeerId);
+          if (textTarget && textTarget.ws.readyState === WebSocket.OPEN) {
+            textTarget.ws.send(JSON.stringify({
+              type: 'text-incoming',
+              fromPeerId: peerId,
+              fromDeviceName: data.fromDeviceName || 'Unknown Device',
+              text: data.text,
+            }));
+          }
+          break;
+        }
+
         default:
           break;
       }

@@ -1,6 +1,6 @@
 import PeerCard from './PeerCard';
 
-export default function PeerGrid({ peers, onSendFile, activePeerId, selfNetworkId }) {
+export default function PeerGrid({ peers, onSendFile, onSendText, activePeerId, selfNetworkId }) {
   if (peers.length === 0) {
     return (
       <div className="empty-state" id="empty-state">
@@ -56,6 +56,7 @@ export default function PeerGrid({ peers, onSendFile, activePeerId, selfNetworkI
                 key={peer.peerId}
                 peer={peer}
                 onSendFile={onSendFile}
+                onSendText={onSendText}
                 isActive={activePeerId === peer.peerId}
                 isLocal={true}
               />
@@ -80,6 +81,7 @@ export default function PeerGrid({ peers, onSendFile, activePeerId, selfNetworkI
                 key={peer.peerId}
                 peer={peer}
                 onSendFile={onSendFile}
+                onSendText={onSendText}
                 isActive={activePeerId === peer.peerId}
                 isLocal={false}
               />
@@ -90,3 +92,4 @@ export default function PeerGrid({ peers, onSendFile, activePeerId, selfNetworkI
     </div>
   );
 }
+
