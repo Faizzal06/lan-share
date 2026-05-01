@@ -1,28 +1,31 @@
-# LANShare - Berbagi File P2P
+# Kirimly — Share Files & Text Instantly
 
-Aplikasi web untuk berbagi file langsung antar perangkat dalam jaringan LAN yang sama menggunakan teknologi WebRTC.
+Kirimly adalah aplikasi web untuk berbagi file & teks langsung antar perangkat menggunakan teknologi WebRTC — tanpa upload ke server.
+
+🌐 **Website**: [kirimly.my.id](https://kirimly.my.id)
 
 ## Fitur
 
-- ⚡ **Transfer Cepat** - Transfer file langsung antar perangkat tanpa server
-- 🔒 **Aman** - Tidak ada data yang melewati server eksternal
-- 📱 **Multi-Platform** - Bekerja di desktop dan mobile
-- 🎯 **Mudah Digunakan** - Drag & drop file untuk mengirim
-- 🌐 **Berbasis Browser** - Tidak perlu instalasi aplikasi
+- ⚡ **Transfer Cepat** — File dikirim langsung antar perangkat (peer-to-peer)
+- 📋 **Share Teks/Clipboard** — Kirim teks atau clipboard ke perangkat lain secara instan
+- 🔒 **Aman & Privat** — Tidak ada data yang melewati server eksternal
+- 📱 **Multi-Platform** — Bekerja di desktop dan mobile browser
+- 🎯 **Tanpa Instalasi** — Cukup buka browser, langsung pakai
+- 🔍 **Auto-Discovery** — Perangkat terdeteksi otomatis di jaringan yang sama
 
 ## Cara Menggunakan
 
-1. Buka LANShare di browser Anda
+1. Buka [kirimly.my.id](https://kirimly.my.id) di browser
 2. Pastikan perangkat lain terhubung ke jaringan WiFi yang sama
 3. Perangkat akan otomatis terdeteksi
-4. Drag & drop file atau klik "Kirim File" untuk memulai transfer
+4. Pilih perangkat tujuan, lalu kirim file atau teks
 
 ## Teknologi
 
-- **React** - Framework UI
-- **Vite** - Build tool
-- **WebRTC** - Transfer data peer-to-peer
-- **WebSocket** - Signaling untuk koneksi
+- **React** — Framework UI
+- **Vite** — Build tool
+- **WebRTC (PeerJS)** — Transfer data peer-to-peer
+- **WebSocket** — Device discovery & signaling
 
 ## Pengembangan
 
@@ -35,14 +38,17 @@ npm run dev
 
 # Build untuk production
 npm run build
+
+# Jalankan production server
+npm start
 ```
 
 ## Catatan
 
-- Pastikan AP Isolation dimatikan di router Anda
+- Pastikan AP Isolation dimatikan di router
 - Semua perangkat harus membuka URL yang sama
-- Transfer file terjadi langsung antar perangkat (P2P)
+- Transfer file & teks terjadi langsung antar perangkat (P2P)
 
 ## Lisensi
 
-MIT
+MIT — Made with ❤️ by Faizal

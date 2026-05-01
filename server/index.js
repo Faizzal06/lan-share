@@ -314,13 +314,13 @@ server.listen(PORT, '0.0.0.0', () => {
   const lanIp = getLanIp();
   console.log('');
   console.log('  ╔═══════════════════════════════════════════════════╗');
-  console.log('  ║             🚀 LANShare P2P is running!          ║');
+  console.log('  ║             🚀 Kirimly is running!               ║');
   console.log('  ╠═══════════════════════════════════════════════════╣');
   console.log(`  ║  Local:    http://localhost:${PORT}                 ║`);
   console.log(`  ║  Network:  http://${lanIp}:${PORT}           ║`);
   console.log('  ║                                                   ║');
   console.log('  ║  Open this URL on other devices in your LAN      ║');
-  console.log('  ║  to start sharing files!                          ║');
+  console.log('  ║  to start sharing files & text!                   ║');
   console.log('  ╚═══════════════════════════════════════════════════╝');
   console.log('');
 });

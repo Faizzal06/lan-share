@@ -36,13 +36,13 @@ export function getDeviceInfo() {
   }
 
   // Generate a human-friendly device name, storing it in localStorage to persist it
-  let deviceName = localStorage.getItem('lanshare_device_name');
+  let deviceName = localStorage.getItem('kirimly_device_name');
   if (!deviceName) {
     const isDesktop = os === 'Windows' || os === 'macOS' || os === 'Linux' || os === 'ChromeOS';
     const prefix = isDesktop ? 'DESKTOP' : 'PHONE';
     const suffix = Math.random().toString(36).substring(2, 6).toUpperCase();
     deviceName = `${prefix}-${suffix}`;
-    localStorage.setItem('lanshare_device_name', deviceName);
+    localStorage.setItem('kirimly_device_name', deviceName);
   }
 
   return { browser, os, deviceName };

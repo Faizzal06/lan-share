@@ -7,12 +7,15 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/ws': {
-        target: 'http://localhost:3000',
+        target: 'http://localhost:5500',
         ws: true,
       },
       '/peerjs': {
-        target: 'http://localhost:3000',
+        target: 'http://localhost:5500',
         ws: true,
+      },
+      '/api': {
+        target: 'http://localhost:5500',
       },
     },
   },

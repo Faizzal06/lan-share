@@ -14,7 +14,7 @@ export default function Header({ connected, peerId, peerStatus, deviceName }) {
         <div className="status-badge" id="network-status">
           <span className={`status-dot ${connected ? 'online' : 'offline'}`}></span>
           <span className="status-label">
-            {connected ? 'Terhubung ke LAN' : 'Menghubungkan...'}
+            {connected ? 'Terhubung' : 'Menghubungkan...'}
           </span>
         </div>
 

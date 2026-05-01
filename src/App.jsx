@@ -2,7 +2,6 @@ import { useEffect, useCallback, useState } from 'react';
 import Header from './components/Header';
 import PeerGrid from './components/PeerGrid';
 import TransferList from './components/TransferList';
-import ManualConnect from './components/ManualConnect';
 import IncomingFileDialog from './components/IncomingFileDialog';
 import { SendTextDialog, IncomingTextDialog } from './components/TextShareDialog';
 import ToastContainer, { useToast } from './components/Toast';
@@ -31,8 +30,8 @@ export default function App() {
   const [activePeerId, setActivePeerId] = useState(null);
 
   // Text share state
-  const [textDialogTarget, setTextDialogTarget] = useState(null); // { peerId, deviceName }
-  const [incomingText, setIncomingText] = useState(null); // { fromPeerId, fromDeviceName, text }
+  const [textDialogTarget, setTextDialogTarget] = useState(null);
+  const [incomingText, setIncomingText] = useState(null);
 
   // Wire up PeerJS data handler to file transfer logic
   useEffect(() => {
@@ -47,11 +46,9 @@ export default function App() {
 
     const handler = (data) => {
       if (data.type === 'file-request') {
-        // Receiver side: show the accept/decline dialog
         setIncomingRequest(data);
         addToast(`File masuk: ${data.fileName}`, 'info', 6000);
       } else if (data.type === 'file-response') {
-        // Sender side: receiver responded to our file-request
         const transferId = findPendingTransfer(data.fromPeerId);
         if (data.accepted) {
           addToast('Transfer file diterima!', 'success');
@@ -65,7 +62,6 @@ export default function App() {
           }
         }
       } else if (data.type === 'text-incoming') {
-        // Receiver side: someone sent us text
         setIncomingText({
           fromPeerId: data.fromPeerId,
           fromDeviceName: data.fromDeviceName,
@@ -87,21 +83,11 @@ export default function App() {
     return () => ws.removeEventListener('message', listener);
   }, [wsRef.current, addToast, findPendingTransfer, startTransfer, cancelPendingTransfer]);
 
-  // Notify when peers join/leave
-  useEffect(() => {
-    if (peers.length > 0) {
-      // Check for newly added peers (we'll rely on toast for new connections)
-    }
-  }, [peers]);
-
   const handleSendFile = useCallback(async (targetPeerId, files) => {
     setActivePeerId(targetPeerId);
     for (const file of files) {
       try {
-        // Queue the file — this does NOT start sending yet
         const transferId = requestSendFile(targetPeerId, file);
-
-        // Send signal via WebSocket to ask receiver for permission
         sendSignal({
           type: 'file-request',
           targetPeerId,
@@ -111,7 +97,6 @@ export default function App() {
           fileType: file.type,
           fromDeviceName: deviceName,
         });
-
         addToast(`Menunggu persetujuan: ${file.name}`, 'info');
       } catch (err) {
         addToast(`Gagal mengirim: ${file.name}`, 'error');
@@ -171,80 +156,25 @@ export default function App() {
     }
   }, [incomingRequest, sendSignal, addToast]);
 
-  const handleManualConnect = useCallback(async (remotePeerId) => {
-    try {
-      await connectToPeer(remotePeerId);
-      addToast(`Terhubung ke ${remotePeerId}`, 'success');
-    } catch (err) {
-      addToast(`Gagal terhubung: ${err.message}`, 'error');
-    }
-  }, [connectToPeer, addToast]);
-
   return (
     <div className="app" id="app">
-      {/* ── Desktop Sidebar ── */}
-      <aside className="app-sidebar" id="app-sidebar">
-        <div className="sidebar-brand">
-          <h1 className="sidebar-logo">LANShare</h1>
-          <span className="sidebar-version">V1.2.0-Stabil</span>
-        </div>
-
-        <nav className="sidebar-nav">
-          <a href="#" className="active">
-            <span className="material-symbols-outlined">radar</span>
-            <span>Temukan</span>
-          </a>
-          <a href="#">
-            <span className="material-symbols-outlined">swap_horiz</span>
-            <span>Transfer</span>
-          </a>
-          <a href="#">
-            <span className="material-symbols-outlined">history</span>
-            <span>Riwayat</span>
-          </a>
-          <a href="#">
-            <span className="material-symbols-outlined">settings</span>
-            <span>Pengaturan</span>
-          </a>
-        </nav>
-
-        <div className="sidebar-footer">
-          <button className="sidebar-send-btn">
-            <span className="material-symbols-outlined">send</span>
-            Kirim File
-          </button>
-        </div>
-      </aside>
-
-      {/* ── Mobile Header ── */}
       <div className="main-area">
-        <header className="mobile-header" id="mobile-header">
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <div className="mobile-logo">LANShare</div>
-            <div style={{ fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', color: 'var(--on-surface-var)' }}>
+        {/* ── Top Bar ── */}
+        <header className="app-topbar" id="app-topbar">
+          <a href="/" className="topbar-brand">
+            <h1 className="topbar-logo">Kirimly</h1>
+          </a>
+          <div className="topbar-right">
+            <div className="topbar-device-name">
+              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>devices</span>
               {deviceName}
             </div>
-          </div>
-          <div className="mobile-actions">
-            <button className="mobile-action-btn">
-              <span className="material-symbols-outlined">lan</span>
-            </button>
-            <button className="mobile-action-btn">
-              <span className="material-symbols-outlined">fingerprint</span>
-            </button>
-            <button className="mobile-action-btn">
-              <span className="material-symbols-outlined">settings</span>
-            </button>
+            <div className={`topbar-status ${connected ? 'online' : ''}`} id="network-status">
+              <span className={`status-dot ${connected ? 'online' : 'offline'}`}></span>
+              <span>{connected ? 'Terhubung' : 'Menghubungkan...'}</span>
+            </div>
           </div>
         </header>
-
-        {/* ── Desktop Status Bar ── */}
-        <Header
-          connected={connected}
-          peerId={peerId}
-          peerStatus={peerStatus}
-          deviceName={deviceName}
-        />
 
         <main className="main-content" id="main-content">
           <section className="section-peers" id="section-peers">
@@ -269,13 +199,11 @@ export default function App() {
             onRemove={removeTransfer}
             onClearCompleted={clearCompleted}
           />
-
-          <ManualConnect onConnect={handleManualConnect} />
         </main>
 
         <footer className="app-footer" id="app-footer">
           <p>File & teks ditransfer langsung antar perangkat. <strong>Tidak ada data yang melewati server.</strong></p>
-          <p className="footer-sub">LANShare P2P · made with ❤️ by Faizal</p>
+          <p className="footer-sub">Kirimly · made with ❤️ by Faizal</p>
         </footer>
       </div>
 
@@ -285,7 +213,6 @@ export default function App() {
         onReject={handleRejectFile}
       />
 
-      {/* ── Text Share Dialogs ── */}
       {textDialogTarget && (
         <SendTextDialog
           targetPeerId={textDialogTarget.peerId}
@@ -305,4 +232,3 @@ export default function App() {
     </div>
   );
 }
-

@@ -14,7 +14,7 @@ export default function PeerGrid({ peers, onSendFile, onSendText, activePeerId, 
         </div>
         <h2 className="empty-title">Mencari perangkat...</h2>
         <p className="empty-subtitle">
-          Pastikan perangkat lain terhubung ke <strong>jaringan WiFi yang sama</strong> dan membuka LANShare.
+          Pastikan perangkat lain terhubung ke <strong>jaringan WiFi yang sama</strong> dan membuka Kirimly.
         </p>
         <div className="empty-tips">
           <div className="tip">

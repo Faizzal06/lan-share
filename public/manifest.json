@@ -1,11 +1,11 @@
 {
-  "name": "LANShare P2P",
-  "short_name": "LANShare",
-  "description": "Share files directly between devices on your local network",
-  "start_url": "/",
+  "name": "Kirimly",
+  "short_name": "Kirimly",
+  "description": "Kirim file & teks instan antar perangkat. Transfer peer-to-peer yang cepat dan aman.",
+  "start_url": "/app",
   "display": "standalone",
-  "background_color": "#0a0e1a",
-  "theme_color": "#6366f1",
+  "background_color": "#f9f9f9",
+  "theme_color": "#f9f9f9",
   "icons": [
     {
       "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>",
