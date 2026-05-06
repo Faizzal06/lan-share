@@ -1,166 +1,317 @@
-import { useRef, useCallback, useState } from 'react';
+import { useRef, useCallback, useState, useMemo } from 'react';
 import { CHUNK_SIZE } from '../utils/fileUtils';
 
-/**
- * Custom hook for file transfer logic.
- * Handles file chunking, sending, receiving, progress tracking.
- * 
- * Flow:
- * 1. Sender calls requestSendFile() → sends file-request via WS, stores file in pendingFiles
- * 2. Receiver sees IncomingFileDialog, clicks Accept → sends file-response via WS
- * 3. Sender receives file-response(accepted=true) → calls startTransfer() to begin P2P data transfer
- * 4. Receiver gets chunks via PeerJS data channel, sends progress-ack back to sender
- * 5. Both sides display the RECEIVER's actual progress
- */
+const ACK_INTERVAL = 8;
+const SEND_YIELD_INTERVAL = 16;
+
+function createTransferId() {
+  if (globalThis.crypto?.randomUUID) {
+    return globalThis.crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function upsertTransfer(prevTransfers, nextTransfer) {
+  const index = prevTransfers.findIndex((transfer) => transfer.id === nextTransfer.id);
+  if (index === -1) {
+    return [...prevTransfers, nextTransfer];
+  }
+
+  const updated = [...prevTransfers];
+  updated[index] = { ...updated[index], ...nextTransfer };
+  return updated;
+}
+
 export function useFileTransfer(connectToPeer, sendToPeer) {
   const [transfers, setTransfers] = useState([]);
-  const receivingBuffers = useRef(new Map()); // transferId -> { info, chunks, received }
-  const pendingFiles = useRef(new Map()); // transferId -> { remotePeerId, file, transferId }
+  const receivingBuffers = useRef(new Map()); // transferId -> { info, chunks, receivedBytes, receivedCount, startTime }
+  const pendingFiles = useRef(new Map()); // transferId -> { batchId, remotePeerId, file }
+  const peerQueues = useRef(new Map()); // peerId -> transferId[]
+  const activeTransfers = useRef(new Map()); // peerId -> transferId
+  const completionWaiters = useRef(new Map()); // transferId -> { resolve, reject }
 
-  /**
-   * Queue a file to be sent — does NOT start sending yet.
-   * Returns the transferId so App.jsx can associate the WS response later.
-   */
-  const requestSendFile = useCallback((remotePeerId, file) => {
-    const transferId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-
-    // Store the file for later when the receiver accepts
-    pendingFiles.current.set(transferId, { remotePeerId, file });
-
-    // Create a "waiting" transfer entry in the UI
-    const transfer = {
-      id: transferId,
-      peerId: remotePeerId,
-      fileName: file.name,
-      fileSize: file.size,
-      fileType: file.type,
-      direction: 'send',
-      progress: 0,
-      speed: 0,
-      status: 'waiting', // waiting for receiver to accept
-      startTime: Date.now(),
-    };
-
-    setTransfers(prev => [...prev, transfer]);
-    return transferId;
+  const resolveCompletion = useCallback((transferId) => {
+    const waiter = completionWaiters.current.get(transferId);
+    if (!waiter) return;
+    completionWaiters.current.delete(transferId);
+    waiter.resolve();
   }, []);
 
-  /**
-   * Actually start the P2P transfer after the receiver accepted.
-   */
-  const startTransfer = useCallback(async (transferId) => {
-    const pending = pendingFiles.current.get(transferId);
-    if (!pending) return;
+  const rejectCompletion = useCallback((transferId, error) => {
+    const waiter = completionWaiters.current.get(transferId);
+    if (!waiter) return;
+    completionWaiters.current.delete(transferId);
+    waiter.reject(error instanceof Error ? error : new Error(error || 'Transfer failed'));
+  }, []);
 
-    const { remotePeerId, file } = pending;
-    pendingFiles.current.delete(transferId);
+  const waitForCompletion = useCallback((transferId) => {
+    return new Promise((resolve, reject) => {
+      completionWaiters.current.set(transferId, { resolve, reject });
+    });
+  }, []);
 
-    // Mark as transferring
-    setTransfers(prev => prev.map(t =>
-      t.id === transferId
-        ? { ...t, status: 'transferring', startTime: Date.now() }
-        : t
-    ));
+  const batches = useMemo(() => {
+    const grouped = new Map();
+
+    for (const transfer of transfers) {
+      const existing = grouped.get(transfer.batchId);
+      const transferredBytes = Math.min(
+        transfer.fileSize,
+        (transfer.fileSize * Math.max(0, transfer.progress || 0)) / 100
+      );
+
+      if (!existing) {
+        grouped.set(transfer.batchId, {
+          id: transfer.batchId,
+          peerId: transfer.peerId,
+          direction: transfer.direction,
+          totalFiles: 1,
+          totalBytes: transfer.fileSize,
+          transferredBytes,
+          completedFiles: transfer.status === 'completed' ? 1 : 0,
+          failedFiles: transfer.status === 'error' ? 1 : 0,
+          files: [transfer.id],
+          createdAt: transfer.createdAt || transfer.startTime || Date.now(),
+        });
+        continue;
+      }
+
+      existing.totalFiles += 1;
+      existing.totalBytes += transfer.fileSize;
+      existing.transferredBytes += transferredBytes;
+      existing.completedFiles += transfer.status === 'completed' ? 1 : 0;
+      existing.failedFiles += transfer.status === 'error' ? 1 : 0;
+      existing.files.push(transfer.id);
+    }
+
+    return Array.from(grouped.values())
+      .map((batch) => {
+        let status = 'waiting';
+        const batchTransfers = transfers.filter((transfer) => transfer.batchId === batch.id);
+
+        if (batch.failedFiles > 0 && batch.completedFiles + batch.failedFiles === batch.totalFiles) {
+          status = batch.completedFiles > 0 ? 'partial' : 'error';
+        } else if (batch.completedFiles === batch.totalFiles) {
+          status = 'completed';
+        } else if (batchTransfers.some((transfer) => transfer.status === 'transferring' || transfer.status === 'connecting')) {
+          status = 'transferring';
+        } else if (batchTransfers.some((transfer) => transfer.status === 'queued')) {
+          status = 'queued';
+        }
+
+        return {
+          ...batch,
+          progress: batch.totalBytes > 0
+            ? (batch.transferredBytes / batch.totalBytes) * 100
+            : (batch.completedFiles === batch.totalFiles ? 100 : 0),
+          status,
+        };
+      })
+      .sort((a, b) => b.createdAt - a.createdAt);
+  }, [transfers]);
+
+  const markTransfer = useCallback((transferId, updates) => {
+    setTransfers((prev) => prev.map((transfer) => (
+      transfer.id === transferId ? { ...transfer, ...updates } : transfer
+    )));
+  }, []);
+
+  const processPeerQueue = useCallback(async (remotePeerId) => {
+    if (activeTransfers.current.has(remotePeerId)) return;
+
+    const queue = peerQueues.current.get(remotePeerId) || [];
+    if (queue.length === 0) return;
+
+    const nextTransferId = queue.shift();
+    peerQueues.current.set(remotePeerId, queue);
+    activeTransfers.current.set(remotePeerId, nextTransferId);
 
     try {
+      const pending = pendingFiles.current.get(nextTransferId);
+      if (!pending) return;
+
+      const { batchId, file } = pending;
+      const completionPromise = waitForCompletion(nextTransferId);
+
+      markTransfer(nextTransferId, {
+        status: 'connecting',
+        error: null,
+        progress: 0,
+        speed: 0,
+        startTime: Date.now(),
+      });
+
       await connectToPeer(remotePeerId);
+
+      markTransfer(nextTransferId, {
+        status: 'transferring',
+        startTime: Date.now(),
+      });
 
       const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
 
-      // Send file metadata
-      sendToPeer(remotePeerId, {
+      if (!sendToPeer(remotePeerId, {
         type: 'file-start',
-        transferId,
+        batchId,
+        transferId: nextTransferId,
         fileName: file.name,
         fileSize: file.size,
         fileType: file.type,
         totalChunks,
-      });
+        chunkSize: CHUNK_SIZE,
+      })) {
+        throw new Error('Unable to send file metadata');
+      }
 
-      // Read and send in chunks
-      const arrayBuffer = await file.arrayBuffer();
+      for (let index = 0; index < totalChunks; index++) {
+        const start = index * CHUNK_SIZE;
+        const end = Math.min(start + CHUNK_SIZE, file.size);
+        const chunk = await file.slice(start, end).arrayBuffer();
 
-      for (let i = 0; i < totalChunks; i++) {
-        const start = i * CHUNK_SIZE;
-        const end = Math.min(start + CHUNK_SIZE, arrayBuffer.byteLength);
-        const chunk = arrayBuffer.slice(start, end);
-
-        sendToPeer(remotePeerId, {
+        if (!sendToPeer(remotePeerId, {
           type: 'file-chunk',
-          transferId,
-          index: i,
+          batchId,
+          transferId: nextTransferId,
+          index,
           data: chunk,
-        });
+        })) {
+          throw new Error('Unable to send file chunk');
+        }
 
-        // Small delay to prevent overwhelming the data channel buffer
-        if (i % 16 === 0 && i > 0) {
-          await new Promise(r => setTimeout(r, 10));
+        if ((index + 1) % SEND_YIELD_INTERVAL === 0) {
+          await new Promise((resolve) => setTimeout(resolve, 0));
         }
       }
 
-      // Send completion signal
-      sendToPeer(remotePeerId, {
+      if (!sendToPeer(remotePeerId, {
         type: 'file-complete',
-        transferId,
-      });
+        batchId,
+        transferId: nextTransferId,
+      })) {
+        throw new Error('Unable to finalize file transfer');
+      }
 
-      // Note: we do NOT set 100% here — we wait for receiver's progress-ack
+      if (totalChunks === 0) {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+
+      await completionPromise;
     } catch (err) {
       console.error('[Transfer] Send error:', err);
-      setTransfers(prev => prev.map(t =>
-        t.id === transferId
-          ? { ...t, status: 'error', error: err.message }
-          : t
-      ));
+      rejectCompletion(nextTransferId, err);
+      markTransfer(nextTransferId, {
+        status: 'error',
+        error: err.message || 'Transfer failed',
+        speed: 0,
+      });
+    } finally {
+      pendingFiles.current.delete(nextTransferId);
+      activeTransfers.current.delete(remotePeerId);
+      void processPeerQueue(remotePeerId);
     }
-  }, [connectToPeer, sendToPeer]);
+  }, [connectToPeer, markTransfer, rejectCompletion, sendToPeer, waitForCompletion]);
 
-  /**
-   * Cancel a pending (waiting) transfer.
-   */
-  const cancelPendingTransfer = useCallback((transferId) => {
-    pendingFiles.current.delete(transferId);
-    setTransfers(prev => prev.map(t =>
-      t.id === transferId
-        ? { ...t, status: 'error', error: 'Transfer declined by receiver' }
-        : t
-    ));
+  const requestSendBatch = useCallback((remotePeerId, files) => {
+    const batchId = createTransferId();
+    const createdAt = Date.now();
+    const normalizedFiles = [];
+    const nextTransfers = [];
+
+    for (const file of files) {
+      const transferId = createTransferId();
+      pendingFiles.current.set(transferId, { batchId, remotePeerId, file });
+
+      nextTransfers.push({
+        id: transferId,
+        batchId,
+        peerId: remotePeerId,
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: file.type,
+        direction: 'send',
+        progress: 0,
+        speed: 0,
+        status: 'waiting',
+        createdAt,
+        startTime: createdAt,
+      });
+
+      normalizedFiles.push({
+        transferId,
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: file.type,
+        lastModified: file.lastModified || null,
+      });
+    }
+
+    setTransfers((prev) => [...prev, ...nextTransfers]);
+
+    return {
+      batchId,
+      files: normalizedFiles,
+      totalFiles: normalizedFiles.length,
+      totalBytes: normalizedFiles.reduce((sum, file) => sum + file.fileSize, 0),
+    };
   }, []);
 
-  /**
-   * Find a pending transferId by targetPeerId and fileName.
-   * Used when the WS file-response comes back so we can match it to the right pending file.
-   */
-  const findPendingTransfer = useCallback((targetPeerId, accepted) => {
-    // Find the first "waiting" transfer to that peer
-    const waitingTransfer = [...pendingFiles.current.entries()].find(
-      ([, val]) => val.remotePeerId === targetPeerId
-    );
-    if (waitingTransfer) {
-      return waitingTransfer[0]; // return the transferId
-    }
-    // Fallback: find in transfers state
-    return null;
-  }, []);
+  const enqueueAcceptedTransfers = useCallback((remotePeerId, transferIds) => {
+    if (!transferIds?.length) return;
 
-  /**
-   * Handle incoming data from peers (chunks, metadata, progress-ack, etc.)
-   */
+    const queue = peerQueues.current.get(remotePeerId) || [];
+
+    for (const transferId of transferIds) {
+      const isKnown = pendingFiles.current.has(transferId);
+      const isQueued = queue.includes(transferId);
+      const isActive = activeTransfers.current.get(remotePeerId) === transferId;
+
+      if (!isKnown || isQueued || isActive) continue;
+      queue.push(transferId);
+      markTransfer(transferId, { status: 'queued', error: null });
+    }
+
+    peerQueues.current.set(remotePeerId, queue);
+    void processPeerQueue(remotePeerId);
+  }, [markTransfer, processPeerQueue]);
+
+  const rejectTransfers = useCallback((transferIds, errorMessage = 'Transfer declined by receiver') => {
+    for (const transferId of transferIds) {
+      const pending = pendingFiles.current.get(transferId);
+      pendingFiles.current.delete(transferId);
+      rejectCompletion(transferId, errorMessage);
+
+      if (pending) {
+        const queue = peerQueues.current.get(pending.remotePeerId) || [];
+        peerQueues.current.set(
+          pending.remotePeerId,
+          queue.filter((queuedId) => queuedId !== transferId)
+        );
+      }
+
+      markTransfer(transferId, {
+        status: 'error',
+        error: errorMessage,
+        speed: 0,
+      });
+    }
+  }, [markTransfer, rejectCompletion]);
+
   const handleIncomingData = useCallback((fromPeerId, data) => {
     if (!data?.type) return;
 
     switch (data.type) {
       case 'file-start': {
-        // Initialize receiving buffer
         receivingBuffers.current.set(data.transferId, {
           info: data,
           chunks: new Array(data.totalChunks),
           receivedCount: 0,
+          receivedBytes: 0,
           startTime: Date.now(),
         });
 
-        const transfer = {
+        setTransfers((prev) => upsertTransfer(prev, {
           id: data.transferId,
+          batchId: data.batchId || data.transferId,
           peerId: fromPeerId,
           fileName: data.fileName,
           fileSize: data.fileSize,
@@ -169,10 +320,9 @@ export function useFileTransfer(connectToPeer, sendToPeer) {
           progress: 0,
           speed: 0,
           status: 'transferring',
+          createdAt: Date.now(),
           startTime: Date.now(),
-        };
-
-        setTransfers(prev => [...prev, transfer]);
+        }));
         break;
       }
 
@@ -182,22 +332,20 @@ export function useFileTransfer(connectToPeer, sendToPeer) {
 
         buffer.chunks[data.index] = data.data;
         buffer.receivedCount++;
+        buffer.receivedBytes += data.data?.byteLength || 0;
 
-        const progress = (buffer.receivedCount / buffer.info.totalChunks) * 100;
+        const progress = buffer.info.fileSize > 0
+          ? Math.min(100, (buffer.receivedBytes / buffer.info.fileSize) * 100)
+          : 100;
         const elapsed = (Date.now() - buffer.startTime) / 1000;
-        const bytesReceived = buffer.receivedCount * CHUNK_SIZE;
-        const speed = elapsed > 0 ? bytesReceived / elapsed : 0;
+        const speed = elapsed > 0 ? buffer.receivedBytes / elapsed : 0;
 
-        setTransfers(prev => prev.map(t =>
-          t.id === data.transferId
-            ? { ...t, progress, speed, status: 'transferring' }
-            : t
-        ));
+        markTransfer(data.transferId, { progress, speed, status: 'transferring' });
 
-        // Send progress-ack back to sender every 8 chunks so they stay in sync
-        if (buffer.receivedCount % 8 === 0) {
+        if (buffer.receivedCount % ACK_INTERVAL === 0) {
           sendToPeer(fromPeerId, {
             type: 'progress-ack',
+            batchId: buffer.info.batchId,
             transferId: data.transferId,
             progress,
             speed,
@@ -210,11 +358,9 @@ export function useFileTransfer(connectToPeer, sendToPeer) {
         const buffer = receivingBuffers.current.get(data.transferId);
         if (!buffer) return;
 
-        // Reassemble file
         const blob = new Blob(buffer.chunks, { type: buffer.info.fileType });
         const url = URL.createObjectURL(blob);
 
-        // Trigger download
         const a = document.createElement('a');
         a.href = url;
         a.download = buffer.info.fileName;
@@ -223,18 +369,17 @@ export function useFileTransfer(connectToPeer, sendToPeer) {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
 
-        // Cleanup
         receivingBuffers.current.delete(data.transferId);
 
-        setTransfers(prev => prev.map(t =>
-          t.id === data.transferId
-            ? { ...t, progress: 100, status: 'completed' }
-            : t
-        ));
+        markTransfer(data.transferId, {
+          progress: 100,
+          speed: 0,
+          status: 'completed',
+        });
 
-        // Send final progress-ack (100%) to sender
         sendToPeer(fromPeerId, {
           type: 'progress-ack',
+          batchId: buffer.info.batchId,
           transferId: data.transferId,
           progress: 100,
           speed: 0,
@@ -244,45 +389,47 @@ export function useFileTransfer(connectToPeer, sendToPeer) {
       }
 
       case 'progress-ack': {
-        // Sender receives this — update sender's progress to match receiver's actual progress
-        setTransfers(prev => prev.map(t =>
-          t.id === data.transferId && t.direction === 'send'
-            ? {
-                ...t,
-                progress: data.progress,
-                speed: data.speed,
-                status: data.completed ? 'completed' : t.status,
-              }
-            : t
-        ));
+        markTransfer(data.transferId, {
+          progress: data.progress,
+          speed: data.speed,
+          status: data.completed ? 'completed' : 'transferring',
+        });
+
+        if (data.completed) {
+          resolveCompletion(data.transferId);
+        }
         break;
       }
 
       default:
         break;
     }
-  }, [sendToPeer]);
+  }, [markTransfer, resolveCompletion, sendToPeer]);
 
-  /**
-   * Remove a completed or errored transfer from the list.
-   */
   const removeTransfer = useCallback((transferId) => {
-    setTransfers(prev => prev.filter(t => t.id !== transferId));
+    const pending = pendingFiles.current.get(transferId);
+    if (pending) {
+      pendingFiles.current.delete(transferId);
+      const queue = peerQueues.current.get(pending.remotePeerId) || [];
+      peerQueues.current.set(
+        pending.remotePeerId,
+        queue.filter((queuedId) => queuedId !== transferId)
+      );
+    }
+
+    setTransfers((prev) => prev.filter((transfer) => transfer.id !== transferId));
   }, []);
 
-  /**
-   * Clear all completed transfers.
-   */
   const clearCompleted = useCallback(() => {
-    setTransfers(prev => prev.filter(t => t.status !== 'completed' && t.status !== 'error'));
+    setTransfers((prev) => prev.filter((transfer) => transfer.status !== 'completed' && transfer.status !== 'error'));
   }, []);
 
   return {
+    batches,
     transfers,
-    requestSendFile,
-    startTransfer,
-    cancelPendingTransfer,
-    findPendingTransfer,
+    requestSendBatch,
+    enqueueAcceptedTransfers,
+    rejectTransfers,
     handleIncomingData,
     removeTransfer,
     clearCompleted,

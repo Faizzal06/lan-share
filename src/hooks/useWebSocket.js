@@ -11,6 +11,7 @@ export function useWebSocket(peerId) {
   const [selfNetworkId, setSelfNetworkId] = useState(null);
   const wsRef = useRef(null);
   const reconnectTimer = useRef(null);
+  const messageHandlersRef = useRef(new Set());
 
   const connect = useCallback(() => {
     if (!peerId) return;
@@ -69,6 +70,10 @@ export function useWebSocket(peerId) {
           default:
             break;
         }
+
+        messageHandlersRef.current.forEach((handler) => {
+          handler(data);
+        });
       } catch (err) {
         console.error('[WS] Error parsing message:', err);
       }
@@ -107,19 +112,10 @@ export function useWebSocket(peerId) {
 
   // Listen for arbitrary message types (file-request, file-response)
   const onMessage = useCallback((handler) => {
-    const listener = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        handler(data);
-      } catch { /* ignore non-JSON */ }
+    messageHandlersRef.current.add(handler);
+    return () => {
+      messageHandlersRef.current.delete(handler);
     };
-
-    const ws = wsRef.current;
-    if (ws) {
-      ws.addEventListener('message', listener);
-      return () => ws.removeEventListener('message', listener);
-    }
-    return () => {};
   }, []);
 
   return { peers, connected, selfNetworkId, sendSignal, onMessage, wsRef };

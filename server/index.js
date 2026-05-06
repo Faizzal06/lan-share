@@ -108,6 +108,32 @@ function hashIp(ip) {
   return 'net-' + hash;
 }
 
+function normalizeRequestedFiles(data) {
+  if (Array.isArray(data.files) && data.files.length > 0) {
+    return data.files
+      .filter((file) => file && typeof file.fileName === 'string')
+      .map((file) => ({
+        transferId: file.transferId || uuidv4(),
+        fileName: file.fileName,
+        fileSize: Number(file.fileSize) || 0,
+        fileType: file.fileType || '',
+        lastModified: file.lastModified || null,
+      }));
+  }
+
+  if (data.transferId && data.fileName) {
+    return [{
+      transferId: data.transferId,
+      fileName: data.fileName,
+      fileSize: Number(data.fileSize) || 0,
+      fileType: data.fileType || '',
+      lastModified: data.lastModified || null,
+    }];
+  }
+
+  return [];
+}
+
 function broadcastPeerList() {
   const peerList = [];
   for (const [id, peer] of peers) {
@@ -194,30 +220,44 @@ wss.on('connection', (ws, req) => {
         }
 
         case 'file-request': {
-          // Forward file request to the target peer
           const targetPeer = peers.get(data.targetPeerId);
+          const files = normalizeRequestedFiles(data);
+
+          if (files.length === 0) {
+            break;
+          }
+
           if (targetPeer && targetPeer.ws.readyState === WebSocket.OPEN) {
             targetPeer.ws.send(JSON.stringify({
               type: 'file-request',
+              batchId: data.batchId || uuidv4(),
               fromPeerId: peerId,
               fromDeviceName: data.fromDeviceName || 'Unknown Device',
-              transferId: data.transferId,
-              fileName: data.fileName,
-              fileSize: data.fileSize,
-              fileType: data.fileType,
+              files,
+              totalFiles: data.totalFiles || files.length,
+              totalBytes: data.totalBytes || files.reduce((sum, file) => sum + file.fileSize, 0),
             }));
           }
           break;
         }
 
         case 'file-response': {
-          // Forward accept/reject to the sender
           const senderPeer = peers.get(data.targetPeerId);
+          const acceptedTransferIds = Array.isArray(data.acceptedTransferIds)
+            ? data.acceptedTransferIds
+            : (data.accepted && Array.isArray(data.transferIds) ? data.transferIds : []);
+          const rejectedTransferIds = Array.isArray(data.rejectedTransferIds)
+            ? data.rejectedTransferIds
+            : (!data.accepted && Array.isArray(data.transferIds) ? data.transferIds : []);
+
           if (senderPeer && senderPeer.ws.readyState === WebSocket.OPEN) {
             senderPeer.ws.send(JSON.stringify({
               type: 'file-response',
+              batchId: data.batchId || null,
               fromPeerId: peerId,
               accepted: data.accepted,
+              acceptedTransferIds,
+              rejectedTransferIds,
             }));
           }
           break;

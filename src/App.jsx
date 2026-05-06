@@ -1,5 +1,4 @@
 import { useEffect, useCallback, useState } from 'react';
-import Header from './components/Header';
 import PeerGrid from './components/PeerGrid';
 import TransferList from './components/TransferList';
 import IncomingFileDialog from './components/IncomingFileDialog';
@@ -10,16 +9,33 @@ import { useWebSocket } from './hooks/useWebSocket';
 import { useFileTransfer } from './hooks/useFileTransfer';
 import { getDeviceInfo } from './utils/deviceInfo';
 
+function normalizeIncomingFiles(data) {
+  if (Array.isArray(data.files) && data.files.length > 0) {
+    return data.files;
+  }
+
+  if (data.transferId && data.fileName) {
+    return [{
+      transferId: data.transferId,
+      fileName: data.fileName,
+      fileSize: data.fileSize,
+      fileType: data.fileType,
+    }];
+  }
+
+  return [];
+}
+
 export default function App() {
   const { deviceName } = getDeviceInfo();
-  const { peerId, peerStatus, connectToPeer, sendToPeer, onData, onConnection } = usePeer();
-  const { peers, connected, selfNetworkId, sendSignal, onMessage, wsRef } = useWebSocket(peerId);
+  const { peerId, connectToPeer, sendToPeer, onData } = usePeer();
+  const { peers, connected, selfNetworkId, sendSignal, onMessage } = useWebSocket(peerId);
   const {
+    batches,
     transfers,
-    requestSendFile,
-    startTransfer,
-    cancelPendingTransfer,
-    findPendingTransfer,
+    requestSendBatch,
+    enqueueAcceptedTransfers,
+    rejectTransfers,
     handleIncomingData,
     removeTransfer,
     clearCompleted,
@@ -42,24 +58,37 @@ export default function App() {
 
   // Listen for WebSocket signals (file-request, file-response, text-incoming)
   useEffect(() => {
-    if (!wsRef.current) return;
-
     const handler = (data) => {
       if (data.type === 'file-request') {
-        setIncomingRequest(data);
-        addToast(`File masuk: ${data.fileName}`, 'info', 6000);
+        const files = normalizeIncomingFiles(data);
+        const totalBytes = data.totalBytes ?? files.reduce((sum, file) => sum + (file.fileSize || 0), 0);
+
+        setIncomingRequest({
+          ...data,
+          batchId: data.batchId || `legacy-${Date.now()}`,
+          files,
+          totalFiles: data.totalFiles || files.length,
+          totalBytes,
+        });
+
+        const count = files.length || 1;
+        addToast(`File masuk: ${count} file`, 'info', 6000);
       } else if (data.type === 'file-response') {
-        const transferId = findPendingTransfer(data.fromPeerId);
+        const acceptedIds = data.acceptedTransferIds || (data.accepted ? (data.transferIds || []) : []);
+        const rejectedIds = data.rejectedTransferIds || (!data.accepted ? (data.transferIds || []) : []);
+
+        if (acceptedIds.length > 0) {
+          enqueueAcceptedTransfers(data.fromPeerId, acceptedIds);
+        }
+
+        if (rejectedIds.length > 0) {
+          rejectTransfers(rejectedIds);
+        }
+
         if (data.accepted) {
-          addToast('Transfer file diterima!', 'success');
-          if (transferId) {
-            startTransfer(transferId);
-          }
+          addToast(`Transfer batch diterima: ${acceptedIds.length} file`, 'success');
         } else {
           addToast('Transfer file ditolak.', 'warning');
-          if (transferId) {
-            cancelPendingTransfer(transferId);
-          }
         }
       } else if (data.type === 'text-incoming') {
         setIncomingText({
@@ -71,39 +100,32 @@ export default function App() {
       }
     };
 
-    const ws = wsRef.current;
-    const listener = (event) => {
-      try {
-        const parsed = JSON.parse(event.data);
-        handler(parsed);
-      } catch { /* ignore non-JSON */ }
-    };
-
-    ws.addEventListener('message', listener);
-    return () => ws.removeEventListener('message', listener);
-  }, [wsRef.current, addToast, findPendingTransfer, startTransfer, cancelPendingTransfer]);
+    return onMessage(handler);
+  }, [onMessage, addToast, enqueueAcceptedTransfers, rejectTransfers]);
 
   const handleSendFile = useCallback(async (targetPeerId, files) => {
     setActivePeerId(targetPeerId);
-    for (const file of files) {
-      try {
-        const transferId = requestSendFile(targetPeerId, file);
-        sendSignal({
-          type: 'file-request',
-          targetPeerId,
-          transferId,
-          fileName: file.name,
-          fileSize: file.size,
-          fileType: file.type,
-          fromDeviceName: deviceName,
-        });
-        addToast(`Menunggu persetujuan: ${file.name}`, 'info');
-      } catch (err) {
-        addToast(`Gagal mengirim: ${file.name}`, 'error');
-      }
+
+    try {
+      const batch = requestSendBatch(targetPeerId, files);
+      if (batch.files.length === 0) return;
+
+      sendSignal({
+        type: 'file-request',
+        batchId: batch.batchId,
+        targetPeerId,
+        files: batch.files,
+        totalFiles: batch.totalFiles,
+        totalBytes: batch.totalBytes,
+        fromDeviceName: deviceName,
+      });
+      addToast(`Menunggu persetujuan untuk ${batch.totalFiles} file...`, 'info');
+    } catch (err) {
+      addToast(err.message || 'Gagal menyiapkan transfer file', 'error');
+    } finally {
+      setActivePeerId(null);
     }
-    setActivePeerId(null);
-  }, [requestSendFile, sendSignal, addToast, deviceName]);
+  }, [requestSendBatch, sendSignal, addToast, deviceName]);
 
   // ── Text share handlers ──
   const handleOpenTextDialog = useCallback((peerId, peerDeviceName) => {
@@ -134,22 +156,32 @@ export default function App() {
 
   const handleAcceptFile = useCallback(() => {
     if (incomingRequest) {
+      const transferIds = incomingRequest.files.map((file) => file.transferId);
+
       sendSignal({
         type: 'file-response',
+        batchId: incomingRequest.batchId,
         targetPeerId: incomingRequest.fromPeerId,
         accepted: true,
+        acceptedTransferIds: transferIds,
+        rejectedTransferIds: [],
       });
-      addToast('Transfer file diterima', 'success');
+      addToast(`${transferIds.length} transfer file diterima`, 'success');
       setIncomingRequest(null);
     }
   }, [incomingRequest, sendSignal, addToast]);
 
   const handleRejectFile = useCallback(() => {
     if (incomingRequest) {
+      const transferIds = incomingRequest.files.map((file) => file.transferId);
+
       sendSignal({
         type: 'file-response',
+        batchId: incomingRequest.batchId,
         targetPeerId: incomingRequest.fromPeerId,
         accepted: false,
+        acceptedTransferIds: [],
+        rejectedTransferIds: transferIds,
       });
       addToast('Transfer file ditolak', 'info');
       setIncomingRequest(null);
@@ -195,6 +227,7 @@ export default function App() {
           </section>
 
           <TransferList
+            batches={batches}
             transfers={transfers}
             onRemove={removeTransfer}
             onClearCompleted={clearCompleted}
