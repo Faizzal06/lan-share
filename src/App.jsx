@@ -7,7 +7,7 @@ import ToastContainer, { useToast } from './components/Toast';
 import { usePeer } from './hooks/usePeer';
 import { useWebSocket } from './hooks/useWebSocket';
 import { useFileTransfer } from './hooks/useFileTransfer';
-import { getDeviceInfo } from './utils/deviceInfo';
+import { getDeviceInfo, getDeviceInfoAsync } from './utils/deviceInfo';
 
 function normalizeIncomingFiles(data) {
   if (Array.isArray(data.files) && data.files.length > 0) {
@@ -27,7 +27,15 @@ function normalizeIncomingFiles(data) {
 }
 
 export default function App() {
-  const { deviceName } = getDeviceInfo();
+  // Start with a fast sync value, then upgrade to real model name (e.g. SM-G955U) on mobile
+  const [deviceName, setDeviceName] = useState(() => getDeviceInfo().deviceName);
+
+  useEffect(() => {
+    getDeviceInfoAsync().then(({ deviceName: resolvedName }) => {
+      setDeviceName(resolvedName);
+    });
+  }, []);
+
   const { peerId, connectToPeer, sendToPeer, onData } = usePeer();
   const { peers, connected, selfNetworkId, sendSignal, onMessage } = useWebSocket(peerId);
   const {

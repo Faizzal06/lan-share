@@ -487,5 +487,14 @@ body {
   .transfer-percentage { font-size: 32px; }
   .toast-container { right: 8px; left: 8px; max-width: none; }
   .text-share-modal { max-width: 95vw; }
-  .topbar-device-name { display: none; }
+  .topbar-device-name {
+    font-size: 11px;
+    padding: 4px 8px;
+    gap: 4px;
+    max-width: 130px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .topbar-device-name .material-symbols-outlined { display: none; }
 }

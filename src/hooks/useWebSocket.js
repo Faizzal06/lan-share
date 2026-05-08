@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { getDeviceInfo } from '../utils/deviceInfo';
+import { getDeviceInfoAsync } from '../utils/deviceInfo';
 
 /**
  * Custom hook for WebSocket-based device discovery.
@@ -21,9 +21,10 @@ export function useWebSocket(peerId) {
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
-    ws.onopen = () => {
+    ws.onopen = async () => {
       setConnected(true);
-      const { deviceName, browser, os } = getDeviceInfo();
+      // Use async version to get the real hardware model on mobile (e.g. SM-G955U)
+      const { deviceName, browser, os, model } = await getDeviceInfoAsync();
 
       ws.send(JSON.stringify({
         type: 'register',
@@ -31,9 +32,10 @@ export function useWebSocket(peerId) {
         deviceName,
         browser,
         os,
+        model,
       }));
 
-      console.log('[WS] Connected and registered as', peerId);
+      console.log('[WS] Connected and registered as', peerId, '| device:', deviceName);
     };
 
     ws.onmessage = (event) => {
