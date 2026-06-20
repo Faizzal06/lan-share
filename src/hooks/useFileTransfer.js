@@ -2,7 +2,8 @@ import { useRef, useCallback, useState, useMemo } from 'react';
 import { CHUNK_SIZE } from '../utils/fileUtils';
 
 const ACK_INTERVAL = 8;
-const SEND_YIELD_INTERVAL = 16;
+// Increased from 16 to 64 to reduce context switching and improve throughput
+const SEND_YIELD_INTERVAL = 64;
 
 function createTransferId() {
   if (globalThis.crypto?.randomUUID) {
